@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eval — Plate Reader</title>
+    <style>
+      body { font-family: system-ui; background: #111418; color: #e8eaed; margin: 16px; }
+      #summary { font-size: 1.2rem; margin-bottom: 12px; }
+      .card { display: flex; gap: 10px; align-items: center; border-bottom: 1px solid #2a2f36; padding: 6px 0; }
+      .card img { height: 48px; border-radius: 4px; }
+      .pass { color: #7ee2b8; } .fail { color: #f28b82; }
+      .mono { font-family: ui-monospace, monospace; }
+    </style>
+  </head>
+  <body>
+    <h1>Pipeline eval</h1>
+    <div id="summary">loading models…</div>
+    <div id="cards"></div>
+    <script type="module" src="/src/web/eval.ts"></script>
+  </body>
+</html>

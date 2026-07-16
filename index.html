@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#111418" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon-192.png" />
+    <!-- App-feel: launch chrome-less from the home-screen icon on iOS (Android
+         reads display:standalone from the manifest instead). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <title>Plate Reader</title>
+  </head>
+  <body>
+    <div id="shell">
+      <header id="topbar">
+        <h1>Plate Reader</h1>
+      </header>
+      <section id="photo-panel">
+        <canvas id="photo-canvas" hidden></canvas>
+        <p id="photo-placeholder" class="hint">
+          Take a photo of the car — plates are read on your phone; nothing is uploaded.
+        </p>
+      </section>
+      <section id="plates-panel">
+        <p id="status" role="status"></p>
+        <div id="cards"></div>
+        <p id="detail-country" class="muted" hidden></p>
+        <p id="no-plate" class="hint" hidden>No plate found — try again closer.</p>
+      </section>
+      <div id="action-bar">
+        <label class="btn primary">
+          📷 Take photo
+          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
+        </label>
+        <label class="btn">
+          🖼 From gallery
+          <input id="gallery-input" type="file" accept="image/*" hidden />
+        </label>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

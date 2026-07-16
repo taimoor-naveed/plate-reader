@@ -1,0 +1,45 @@
+import { extractPlates } from '../pipeline/pipeline'
+import { normalizePlateText } from '../pipeline/validate'
+import { loadWebSession } from './ort-web'
+import { fileToImageData, cropToDataUrl } from './decode'
+
+const summary = document.getElementById('summary')!
+const cards = document.getElementById('cards')!
+
+const [detector, ocr] = await Promise.all([
+  loadWebSession(`${import.meta.env.BASE_URL}models/yolo-v9-t-384-license-plates-end2end.onnx`),
+  loadWebSession(`${import.meta.env.BASE_URL}models/cct_xs_v2_global.onnx`),
+])
+// value: one plate or an unordered array of ALL readable plates (equal priority) — mirrors scripts/eval.ts
+const expected: Record<string, string | string[]> = await (await fetch('/eval-data/expected.json')).json()
+
+let done = 0
+let platesFound = 0
+let platesExpected = 0
+let totalMs = 0
+const n = Object.keys(expected).length
+
+for (const [file, want] of Object.entries(expected)) {
+  const plates = (Array.isArray(want) ? want : [want]).map(normalizePlateText)
+  const blob = await (await fetch(`/attachments/${file}`)).blob()
+  const image = await fileToImageData(blob)
+  const res = await extractPlates(image, { detector, ocr })
+  const got = res.candidates.map((c) => c.validation.plate)
+  const found = plates.filter((p) => got.includes(p))
+  const pass = found.length === plates.length
+
+  done++
+  platesExpected += plates.length
+  platesFound += found.length
+  totalMs += res.timings.totalMs
+
+  const card = document.createElement('div')
+  card.className = 'card'
+  const thumb = res.candidates[0] ? `<img src="${cropToDataUrl(image, res.candidates[0].box)}" alt="">` : ''
+  const gotText = got.length ? got.join(', ') : '—'
+  card.innerHTML = `${thumb}<span class="${pass ? 'pass' : 'fail'}">${pass ? 'PASS' : 'FAIL'}</span>
+    <span class="mono">${file}</span> <span class="mono">want ${plates.join(', ')} · got ${gotText}</span>
+    <span>${Math.round(res.timings.totalMs)}ms</span>`
+  cards.appendChild(card)
+  summary.textContent = `plates found ${platesFound}/${platesExpected} · ${done}/${n} processed · avg ${Math.round(totalMs / done)}ms`
+}

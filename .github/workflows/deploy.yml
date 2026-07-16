@@ -1,0 +1,65 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch ONNX models (from upstream releases; never committed)
+        run: bash scripts/fetch-models.sh
+
+      - name: Build (GitHub Pages base path)
+        run: BASE_PATH=/plate-reader/ npm run build
+
+      - name: Verify eval.html was excluded from the deployed build
+        # eval.html is the dev-only accuracy scoreboard (reads gitignored
+        # attachments/ + eval/expected.json, neither of which exist here) — it
+        # must never ship in the public build. vite.config.ts already drops it
+        # from the rollup input whenever BASE_PATH is set; this is a defensive
+        # check so a future regression fails CI instead of silently deploying it.
+        run: |
+          if [ -f dist/eval.html ]; then
+            echo "eval.html present in dist/ — must not ship to the public deployment" >&2
+            exit 1
+          fi
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

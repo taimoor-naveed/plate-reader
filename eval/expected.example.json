@@ -1,0 +1,4 @@
+{
+  "single_plate_photo.jpg": "MXY123",
+  "multi_plate_photo.jpg": ["MXY123", "KAB1234"]
+}

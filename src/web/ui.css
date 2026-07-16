@@ -1,0 +1,209 @@
+@font-face {
+  font-family: 'FE-Schrift';
+  src: url('./fonts/GL-Nummernschild-Mtl.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: #111418;
+  color: #e8eaed;
+  overflow: hidden;
+  height: 100dvh;
+  overscroll-behavior: none;
+}
+h1 { font-size: 1.3rem; margin: 0; }
+.hint, .muted { color: #9aa0a6; font-size: 0.9rem; }
+
+/* App shell: three fixed zones (photo / plates / actions) + header, no whole-page scroll. */
+#shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 0 16px;
+  box-sizing: border-box;
+}
+#topbar { flex: 0 0 auto; padding: 12px 0 8px; }
+
+#photo-panel {
+  flex: 0 0 34%;
+  min-height: 140px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #1b1f24;
+  padding: 12px;
+  box-sizing: border-box;
+}
+/* Element box must keep the drawn buffer's aspect ratio: photo-view.ts hit-tests taps
+   with rect-relative math that assumes content fills the element. max-w/h + auto lets
+   the canvas's intrinsic ratio size the box inside the (flex-centering) panel —
+   object-fit would letterbox the content inside a mismatched box and break both the
+   displayed size and tap alignment. */
+#photo-canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+/* display: block above beats the UA's [hidden] rule (ID specificity) — restore it,
+   or the empty-state placeholder shares the panel with an invisible flex sibling
+   and gets shoved into a narrow off-center column. */
+#photo-canvas[hidden] { display: none; }
+
+#plates-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 10px 0;
+  box-sizing: border-box;
+}
+
+#action-bar { flex: 0 0 auto; display: flex; gap: 12px; padding: 12px 0 16px; }
+.btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #2a2f36; cursor: pointer; user-select: none; }
+.btn.primary { background: #1a73e8; }
+
+#cards { display: flex; flex-direction: column; gap: 14px; }
+#detail-country { margin: 10px 0 0; }
+
+/* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
+   band (real plates: ~42mm of 520), then district | seal stack | letters digits.
+   container-type: size lets children size themselves in cqh (% of plate height),
+   which is what the anatomy is specified in. */
+.plate-card {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  aspect-ratio: 520 / 110;
+  container-type: size;
+  padding: 0;
+  border: 3px solid #111;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  box-sizing: border-box;
+}
+.plate-card .eu-band {
+  flex: 0 0 8.5%; /* real band ≈ 42/520 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5cqh;
+  background: #003399;
+  border-radius: 6px 0 0 6px;
+}
+.plate-card .eu-band .eu-stars { width: 66%; height: auto; }
+.plate-card .eu-band .eu-d { color: #fff; font-weight: 700; font-size: 22cqh; line-height: 1; font-family: system-ui, sans-serif; }
+.plate-card .plate-face {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 2cqh 1.5%;
+}
+/* Characters must dominate the face like the real thing. FE-Schrift ink (cap
+   height) is 60% of its em and its advance width already includes real-plate
+   inter-character spacing (advance/cap = 0.75 ≈ a real plate's 57/75mm), so
+   letter-spacing stays 0 (adding more would exceed the reference). cqh resolves
+   against the card's CONTENT box (border-box minus the 3px rim), so 120cqh
+   font-size = 66% ink relative to the full plate height (real: 75/110 = 68%).
+   --plate-fs drops to 105cqh for 8-glyph plates (set in app.ts) — real plates
+   switch to the narrower Engschrift there. */
+.plate-static {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15ch;
+  min-width: 0;
+  color: #111;
+  font-family: 'FE-Schrift', ui-monospace, monospace;
+  font-weight: 400;
+  font-size: 2rem; /* fallback for browsers without container-query units */
+  font-size: var(--plate-fs, 120cqh);
+  line-height: 1;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.seal-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4cqh;
+  margin: 0 0.05ch;
+}
+.seal { width: 35cqh; height: 35cqh; border-radius: 50%; } /* 32% of full plate height (cqh is content-box relative) */
+/* generic discs, no artwork: green inspection seal (darker ring), silver/grey
+   state seal with a faint bluish emblem tint */
+.seal-inspection { background: #2e7d32; box-shadow: inset 0 0 0 3cqh #245e28; }
+.seal-state { background: radial-gradient(circle at 50% 42%, #9fb2c8 0 34%, #b0b6bd 62%); }
+/* In-place edit: the input is hidden until the selected card is tapped again;
+   while it has focus it spans the face (seals + static text hide), blur returns
+   the anatomy view (app.ts re-renders it from the edited value). */
+.plate-card .plate-input { display: none; font-size: 1.5rem; font-size: 80cqh; letter-spacing: 0.02em; }
+.plate-card.editing .plate-static { display: none; }
+.plate-card.editing .plate-input { display: block; }
+.plate-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  text-align: center;
+  color: #111;
+  font-family: 'FE-Schrift', ui-monospace, monospace;
+  font-weight: 400; /* intentional: FE-Schrift is single-weight; bold would faux-bold and distort the authentic glyphs */
+  font-size: clamp(1.1rem, 7vw, 2rem);
+  letter-spacing: 0.1em;
+  padding: 0;
+}
+.plate-input[readonly] { cursor: pointer; }
+/* Non-German read (validation.rule !== 'DE'): neutral chip — deliberately NOT
+   dressed as any country's plate, and never paired with a country line. */
+.plain-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 8px;
+  border: 1px solid #3c4043;
+  border-radius: 10px;
+  background: #1b1f24;
+  cursor: pointer;
+  font: inherit;
+  box-sizing: border-box;
+}
+.plain-card .plate-input {
+  color: #e8eaed;
+  font-family: ui-monospace, monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.08em;
+}
+.plate-card.selected, .plain-card.selected { outline: 3px solid #1a73e8; outline-offset: 2px; }
+.plate-card .index-badge, .plain-card .index-badge {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #ffde59;
+  color: #111;
+  font-size: 0.8rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #111;
+  z-index: 1;
+}

@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+dist/
+
+# Sample photos contain personal data (colleague license plates) - keep local only
+attachments/
+.superpowers/
+
+eval/expected.json
+eval/out/
+public/models/
+public/ort/
