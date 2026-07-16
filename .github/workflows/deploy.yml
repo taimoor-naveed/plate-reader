@@ -33,7 +33,7 @@ jobs:
         run: node --version && npm --version
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci || { echo '=== npm debug log ==='; cat /home/runner/.npm/_logs/*debug*.log; exit 1; }
 
       - name: Fetch ONNX models (from upstream releases; never committed)
         run: bash scripts/fetch-models.sh
