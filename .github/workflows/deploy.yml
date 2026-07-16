@@ -24,8 +24,13 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          # pinned to the locally-verified toolchain; '24' floated to a newer
+          # 24.x whose npm rejected the lockfile with "Invalid Version"
+          node-version: '24.11.0'
           cache: npm
+
+      - name: Toolchain versions
+        run: node --version && npm --version
 
       - name: Install dependencies
         run: npm ci
