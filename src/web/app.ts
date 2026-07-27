@@ -255,10 +255,14 @@ let panzoom: PanzoomObject | null = null
  */
 function ensurePanzoom(canvas: HTMLCanvasElement) {
   if (panzoom) return
-  panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, panOnlyWhenZoomed: true })
+  // contain: 'outside' is Panzoom's built-in containment: panning is clamped so
+  // the photo always covers the panel — no gaps, no manual snap-back. It assumes
+  // the element fills its container at rest, which the CSS guarantees (the panel
+  // hugs the canvas exactly; the size cap lives on the canvas itself).
+  const pz = (panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, contain: 'outside', panOnlyWhenZoomed: true }))
   const panel = canvas.parentElement!
-  panel.addEventListener('wheel', panzoom.zoomWithWheel)
-  canvas.addEventListener('dblclick', () => panzoom!.reset())
+  panel.addEventListener('wheel', pz.zoomWithWheel)
+  canvas.addEventListener('dblclick', () => pz.reset())
   let downX = 0
   let downY = 0
   panel.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY }, true)

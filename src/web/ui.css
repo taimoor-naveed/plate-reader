@@ -110,12 +110,13 @@ h1 {
   border-radius: 20px;
   box-sizing: border-box;
 }
+/* With a photo, the panel hugs the canvas exactly (no padding, no fixed height):
+   Panzoom's contain: 'outside' needs element == container at rest, and portrait
+   photos letterbox/clip if the cap sits on the panel instead of the canvas. */
 #content:has(#photo-canvas:not([hidden])) #photo-panel {
-  flex: 0 1 auto;
-  max-height: 44dvh;
-  background: var(--surface);
-  padding: 10px;
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent) inset;
+  flex: 0 0 auto;
+  align-self: center;
+  max-width: 100%;
 }
 #content:has(#photo-canvas:not([hidden])) #plates-panel {
   flex: 1 1 auto;
@@ -131,7 +132,7 @@ h1 {
    the canvas's intrinsic ratio size the box inside the (flex-centering) panel —
    object-fit would letterbox the content inside a mismatched box and break both the
    displayed size and tap alignment. */
-#photo-canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; border-radius: 12px; }
+#photo-canvas { max-width: 100%; max-height: 44dvh; width: auto; height: auto; display: block; border-radius: 20px; }
 /* display: block above beats the UA's [hidden] rule (ID specificity) — restore it,
    or the empty-state placeholder shares the panel with an invisible flex sibling
    and gets shoved into a narrow off-center column. */
@@ -394,9 +395,11 @@ h1 {
   #content { flex-direction: row; align-items: stretch; }
   #photo-panel { flex: 1 1 50%; }
   #content:has(#photo-canvas:not([hidden])) #photo-panel {
-    flex: 0 0 46%;
-    max-height: none;
+    flex: 0 1 auto;
+    align-self: center;
+    max-width: 46%;
   }
+  #photo-canvas { max-height: calc(100dvh - 190px); }
   #plates-panel { flex: 1 1 auto; min-height: 0; }
 }
 
