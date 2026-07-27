@@ -47,6 +47,9 @@ body {
   overflow: hidden;
   height: 100dvh;
   overscroll-behavior: none;
+  /* app, not web page: no double-tap zoom (panning/scrolling still allowed;
+     the photo canvas gets its own pinch-zoom via Panzoom) */
+  touch-action: manipulation;
 }
 .hint { color: var(--muted); font-size: 0.9rem; }
 
@@ -83,20 +86,6 @@ h1 {
   letter-spacing: -0.01em;
   margin: 0;
 }
-#privacy-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-weight: 550;
-  color: var(--ok);
-  background: color-mix(in srgb, var(--ok) 13%, transparent);
-  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
-  padding: 5px 11px;
-  border-radius: 999px;
-}
-#privacy-badge svg { width: 12px; height: 12px; }
-
 #content {
   flex: 1 1 auto;
   min-height: 0;
@@ -131,6 +120,11 @@ h1 {
 #content:has(#photo-canvas:not([hidden])) #plates-panel {
   flex: 1 1 auto;
   min-height: 0;
+  /* the selected card's outline sticks 5px outside the card; a scroll container
+     clips at its padding box, so give it side padding (offset by the negative
+     margin to keep cards flush at 16px) instead of shaving the outline */
+  padding: 6px 6px 24px;
+  margin: 0 -6px;
 }
 /* Element box must keep the drawn buffer's aspect ratio: photo-view.ts hit-tests taps
    with rect-relative math that assumes content fills the element. max-w/h + auto lets

@@ -2,7 +2,10 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- maximum-scale/user-scalable: the page itself must not pinch-zoom like a web
+         page (the photo has its own zoom). iOS honors this when installed; in-browser
+         Safari ignores it and is handled by the gesturestart guard in app.ts. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <!-- Matches --header-bg, which stays dark in BOTH themes: iOS standalone renders
          status text white over black-translucent, so the strip under it must stay dark. -->
     <meta name="theme-color" content="#12161d" />
@@ -19,10 +22,6 @@
     <div id="shell">
       <header id="topbar">
         <h1>Plate Reader</h1>
-        <span id="privacy-badge">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-          On-device
-        </span>
       </header>
       <main id="content">
         <section id="photo-panel">

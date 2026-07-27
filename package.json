@@ -22,6 +22,7 @@
   "type": "module",
   "private": "true",
   "dependencies": {
+    "@panzoom/panzoom": "^4.6.2",
     "onnxruntime-web": "^1.27.0"
   },
   "devDependencies": {

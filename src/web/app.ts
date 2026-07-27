@@ -1,3 +1,4 @@
+import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
 import { loadWebSession } from './ort-web'
@@ -243,12 +244,44 @@ export function renderResult(result: PipelineResult) {
   if (result.candidates.length === 1) selectCandidate(0)
 }
 
-/** Show the decoded photo immediately (rectangle-free) so it's visible in every outcome. */
-function showPhoto(image: ImageDataLike) {
+let panzoom: PanzoomObject | null = null
+
+/**
+ * Pinch/pan/wheel zoom for the photo, via Panzoom (transform-based, so
+ * photo-view's rect-relative tap math keeps working — the bounding rect scales
+ * with the content). Bound once to the persistent canvas; every new photo
+ * resets to fit. A click that follows a real pan is swallowed in the capture
+ * phase so dragging the photo never counts as tapping a plate box.
+ */
+function ensurePanzoom(canvas: HTMLCanvasElement) {
+  if (panzoom) return
+  panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, panOnlyWhenZoomed: true })
+  const panel = canvas.parentElement!
+  panel.addEventListener('wheel', panzoom.zoomWithWheel)
+  canvas.addEventListener('dblclick', () => panzoom!.reset())
+  let downX = 0
+  let downY = 0
+  panel.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY }, true)
+  panel.addEventListener(
+    'click',
+    (e) => {
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 8) e.stopPropagation()
+    },
+    true,
+  )
+}
+
+/**
+ * Show the decoded photo immediately (rectangle-free) so it's visible in every
+ * outcome. Exported for headless UI verification (paired with renderResult).
+ */
+export function showPhoto(image: ImageDataLike) {
   const canvas = $('#photo-canvas') as HTMLCanvasElement
   $('#photo-placeholder').hidden = true
   canvas.hidden = false
   view = renderPhotoView(canvas, image, [], (i) => selectCandidate(i))
+  ensurePanzoom(canvas)
+  panzoom?.reset({ animate: false })
 }
 
 async function handleFile(file: File) {
@@ -279,6 +312,10 @@ export function getLastResult() {
 export function getSessions() {
   return sessions
 }
+
+// In-browser iOS Safari ignores user-scalable=no (installed apps honor it) —
+// suppress its native page-pinch so only the photo zooms there too.
+document.addEventListener('gesturestart', (e) => e.preventDefault())
 
 for (const id of ['camera-input', 'gallery-input']) {
   $(`#${id}`).addEventListener('change', (e) => {
