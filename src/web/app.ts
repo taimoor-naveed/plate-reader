@@ -268,10 +268,82 @@ function ensurePanzoom(canvas: HTMLCanvasElement) {
   // the photo always covers the panel — no gaps, no manual snap-back. It assumes
   // the element fills its container at rest, which the CSS guarantees (the panel
   // hugs the canvas exactly; the size cap lives on the canvas itself).
-  const pz = (panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, contain: 'outside', panOnlyWhenZoomed: true }))
+  //
+  // noBind: Panzoom's own pinch scales LINEARLY with finger distance in pixels
+  // (step/80 per px) — the image visibly lags the fingers. We bind pointers
+  // ourselves and drive the library's zoom/pan with the natural mapping
+  // instead: scale = startScale × (fingerDistance / startDistance), panned so
+  // the content point that was under the fingers stays under the fingers.
+  const pz = (panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, contain: 'outside', noBind: true }))
   const panel = canvas.parentElement!
   panel.addEventListener('wheel', pz.zoomWithWheel)
   canvas.addEventListener('dblclick', () => pz.reset())
+
+  const pointers = new Map<number, PointerEvent>()
+  let startScale = 1
+  let startDist = 0
+  let startMid = { x: 0, y: 0 }
+  let startPan = { x: 0, y: 0 }
+  // untransformed element center in client coords (transform origin is 50% 50%,
+  // and translate is applied in pre-scale space: screen offset = scale × pan)
+  let center = { x: 0, y: 0 }
+
+  const mid = () => {
+    let x = 0
+    let y = 0
+    for (const p of pointers.values()) {
+      x += p.clientX
+      y += p.clientY
+    }
+    return { x: x / pointers.size, y: y / pointers.size }
+  }
+  const dist = () => {
+    if (pointers.size < 2) return 0
+    const [a, b] = [...pointers.values()]
+    return Math.hypot(a!.clientX - b!.clientX, a!.clientY - b!.clientY)
+  }
+  /** (Re-)anchor the gesture at the current state — on every finger down/up. */
+  const anchor = () => {
+    startScale = pz.getScale()
+    startPan = pz.getPan()
+    const rect = canvas.getBoundingClientRect()
+    center = {
+      x: rect.left + rect.width / 2 - startScale * startPan.x,
+      y: rect.top + rect.height / 2 - startScale * startPan.y,
+    }
+    if (pointers.size > 0) startMid = mid()
+    startDist = dist()
+  }
+
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId)
+    pointers.set(e.pointerId, e)
+    anchor()
+  })
+  canvas.addEventListener('pointermove', (e) => {
+    if (!pointers.has(e.pointerId)) return
+    pointers.set(e.pointerId, e)
+    const m = mid()
+    const pinching = pointers.size >= 2 && startDist > 0
+    if (!pinching && pz.getScale() <= 1.001) return // a tap at rest stays a tap
+    if (pinching) pz.zoom(startScale * (dist() / startDist), { animate: false })
+    const s = pz.getScale() // post-clamp
+    // keep the content point that was under the start-midpoint under the
+    // current midpoint: t1 = t0 + (mid - C)/s1 - (startMid - C)/s0
+    pz.pan(
+      startPan.x + (m.x - center.x) / s - (startMid.x - center.x) / startScale,
+      startPan.y + (m.y - center.y) / s - (startMid.y - center.y) / startScale,
+      { animate: false },
+    )
+  })
+  const lift = (e: PointerEvent) => {
+    pointers.delete(e.pointerId)
+    anchor()
+  }
+  canvas.addEventListener('pointerup', lift)
+  canvas.addEventListener('pointercancel', lift)
+
+  // a drag/pinch must not count as a tap on a plate box
   let downX = 0
   let downY = 0
   panel.addEventListener('pointerdown', (e) => { downX = e.clientX; downY = e.clientY }, true)
