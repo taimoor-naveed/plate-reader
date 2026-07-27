@@ -231,3 +231,40 @@ to the detector box clipping the final character at its right edge
 (`20260417_205500` @0.94 with last char 0.37; one `20260427_190324` plate at
 0.995, which displays rounded as "100%" but fails the strict ≥1.0 bar —
 display/threshold inconsistency to fix in the app).
+
+---
+
+## Addendum 2 (2026-07-27): public-dataset test — two new failure classes
+
+Tested against free public data: [Zenodo EU plates](https://zenodo.org/records/3967850)
+(53 cropped plates, CC BY 4.0) and [OpenALPR benchmarks](https://github.com/openalpr/benchmarks)
+`endtoend/eu` (108 full scenes). A German-only subset was curated by requiring
+BOTH a German-format ground truth AND the OCR region head saying Germany
+(kept: 46 crops + 1 scene — OpenALPR eu is mostly Italian/Czech/Polish and
+near-useless for German testing). Curated set + manifest live locally under
+`eval/out/datasets/german-public/` (gitignored).
+
+Results on the curated German subset: 43/46 crops correct (42 at the
+certainty bar), 1 scene correct-and-certain. Three wrong-at-certain reads,
+each a distinct finding:
+
+1. **Foreign-plate coercion (the big one, from the unfiltered scenes):**
+   7 of 108 mixed-EU scenes produced reads misread by one character into a
+   VALID German format at confidence 1.00 (Polish/Czech/Slovak/Latvian
+   plates). The OCR's region head — computed today but unused for gating —
+   identifies all 7 as non-German at probability 1.00, and requiring
+   `region == Germany` for certainty costs ZERO correct-certain reads on the
+   private local set (35 kept / 0 lost). Fix is one condition in the app's
+   `isCertain`; deferred by user decision (dataset was filtered instead).
+2. **Authority plates (Behördenkennzeichen):** German plates with no middle
+   letters (`HH 07194`, `M 230`) are coerced into standard-format misreads at
+   1.00 (`0→O`, `2→Z`) because rules/de.ts only models district+letters+digits.
+   Rare in the wild but a real rule gap.
+3. **Pre-clipped source crop** (`SU FF 170` → read `SU FF 17` at 1.00): same
+   truncation class as the detector right-edge clipping in Addendum 1 —
+   truncated reads are format-valid and fully confident.
+
+Note: ground-truth filenames cannot encode umlauts; comparisons must fold
+Ä/Ö/Ü or the validator's legitimate umlaut-district reads (RÜD) count as
+errors. Larger German source for future calibration: Kaggle
+"Germany License Plate Dataset" (~178k crops) — requires a Kaggle login.
