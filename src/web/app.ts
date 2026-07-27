@@ -210,9 +210,6 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
     chip.textContent = String(index + 1)
     meta.appendChild(chip)
   }
-  const conf = document.createElement('span')
-  conf.textContent = `${Math.round(c.validation.confidence * 100)}% read`
-  meta.appendChild(conf)
   const country = metaCountry(c)
   if (country) {
     const span = document.createElement('span')
@@ -220,7 +217,7 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
     span.textContent = country
     meta.appendChild(span)
   }
-  wrap.appendChild(meta)
+  if (meta.childElementCount > 0) wrap.appendChild(meta)
   wrap.appendChild(card)
   return wrap
 }
@@ -230,7 +227,19 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
  * overlay. Owns lastResult so selection always matches what is on screen.
  * Exported for headless UI verification (driven with synthetic results).
  */
+/**
+ * Automation bar (user decision 2026-07-27): only German-format reads at full
+ * confidence are shown at all — boxes and cards alike. A plate the pipeline
+ * can't read with certainty is treated as not read; the user retakes the photo
+ * instead of second-guessing a maybe-read. Eval (24 photos / 34 plates):
+ * 28 of 30 correct reads survive this bar, all 4 misreads are filtered.
+ */
+function isCertain(c: PlateCandidate): boolean {
+  return c.validation.rule === 'DE' && c.validation.confidence >= 1
+}
+
 export function renderResult(result: PipelineResult) {
+  result = { ...result, candidates: result.candidates.filter(isCertain) }
   lastResult = result
   const cards = $('#cards')
   cards.innerHTML = ''
