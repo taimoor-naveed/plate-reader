@@ -192,3 +192,42 @@ MISS plate-D                 20260611_121655.jpg  found=1/2  28ms
 
 plates found: 30/34   photos fully covered: 21/24   avg 33ms/image
 ```
+
+---
+
+## Addendum (2026-07-27): dataset growth, tilt reclassification, large-angle deskew verdict
+
+**Dataset grew to 30 photos / 42 plates** (6 phone photos added; 2 include
+readable background plates). Baseline on the grown set: 36/42 — every new
+main plate reads correctly at confidence 1.0, including ~25-30° side-angle
+shots; the 2 new misses are small background plates (class (a), detector).
+
+**Reclassification:** the two class-(c) "OCR misreads on non-tilted boxes"
+(`20260203_085449` plate-A, `20260416_090127`) are in fact **heavily tilted
+crops** (~45-60° diagonal in decoded pixels; both detector boxes are
+taller-than-wide, impossible for an upright 520:110 plate). The earlier
+"not meaningfully tilted" judgment was wrong.
+
+**Large-angle rotation sweep (±80°, 5° steps, per-angle read dump):**
+
+- With the sweep's forced `margin ≥ 0.15`: **no angle reads either plate
+  correctly** (margin sensitivity strikes again).
+- With `margin = 0`: both plates DO read correctly at a small nudge
+  (+5° → correct @1.00 for one, −5° → correct @0.99 for the other) — but
+  the same box also yields **wrong DE-valid reads at confidence 1.00** at
+  other angles (+20°, +25°, +40°). Mean-charProb argmax cannot distinguish
+  the correct 1.00 from the wrong 1.00s.
+
+**Verdict: rotation sweep must NOT be adopted** for the app while the UI
+shows only ≥1.00 reads as certain. The baseline has zero wrong reads at 1.00
+across all 42 plates — the certainty bar is currently airtight; a sweep
+would manufacture wrong-at-1.00 reads that pass it. If tilted snapshots
+should ever be supported properly, the sound route is a detector that
+outputs plate corners + a single deterministic perspective rectification
+(no multi-angle argmax), evaluated against this same wrong-at-1.00 criterion.
+
+Separate open lever from the same investigation: two correct reads are lost
+to the detector box clipping the final character at its right edge
+(`20260417_205500` @0.94 with last char 0.37; one `20260427_190324` plate at
+0.995, which displays rounded as "100%" but fails the strict ≥1.0 bar —
+display/threshold inconsistency to fix in the app).
