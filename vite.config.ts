@@ -1,6 +1,19 @@
 import { defineConfig, type Plugin } from 'vite'
 import fs from 'node:fs'
 import path from 'node:path'
+import { execSync } from 'node:child_process'
+
+// Build identity shown small in the app header: short commit + build date.
+// Exists to answer "which build is this phone actually running" — installed
+// PWAs lag one launch behind a deploy. 'dev' outside a git checkout (CI and
+// local dev both have one).
+let commit = 'dev'
+try {
+  commit = execSync('git rev-parse --short HEAD', { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+} catch {
+  /* not a git checkout */
+}
+const APP_BUILD = `${commit} · ${new Date().toISOString().slice(0, 10)}`
 
 /** Dev-only: serve sample photos + ground truth for /eval.html (both are gitignored, never bundled). */
 function serveLocalData(): Plugin {
@@ -52,6 +65,7 @@ const buildInput: Record<string, string> =
 
 export default defineConfig({
   base: BASE_PATH,
+  define: { __APP_BUILD__: JSON.stringify(APP_BUILD) },
   optimizeDeps: { exclude: ['onnxruntime-web'] },
   plugins: [serveLocalData()],
   server: {

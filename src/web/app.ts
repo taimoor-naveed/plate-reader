@@ -325,6 +325,8 @@ export function getSessions() {
 // suppress its native page-pinch so only the photo zooms there too.
 document.addEventListener('gesturestart', (e) => e.preventDefault())
 
+$('#app-build').textContent = __APP_BUILD__
+
 for (const id of ['camera-input', 'gallery-input']) {
   $(`#${id}`).addEventListener('change', (e) => {
     const file = (e.target as HTMLInputElement).files?.[0]

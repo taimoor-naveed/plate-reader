@@ -86,6 +86,13 @@ h1 {
   letter-spacing: -0.01em;
   margin: 0;
 }
+#app-build {
+  font-size: 0.68rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, var(--header-ink) 40%, transparent);
+  user-select: none;
+}
 #content {
   flex: 1 1 auto;
   min-height: 0;
