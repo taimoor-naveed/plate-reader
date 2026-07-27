@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#111418" />
+    <!-- Matches --header-bg, which stays dark in BOTH themes: iOS standalone renders
+         status text white over black-translucent, so the strip under it must stay dark. -->
+    <meta name="theme-color" content="#12161d" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon-192.png" />
     <!-- App-feel: launch chrome-less from the home-screen icon on iOS (Android
@@ -17,27 +19,37 @@
     <div id="shell">
       <header id="topbar">
         <h1>Plate Reader</h1>
+        <span id="privacy-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2.5"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+          On-device
+        </span>
       </header>
-      <section id="photo-panel">
-        <canvas id="photo-canvas" hidden></canvas>
-        <p id="photo-placeholder" class="hint">
-          Take a photo of the car — plates are read on your phone; nothing is uploaded.
-        </p>
-      </section>
-      <section id="plates-panel">
-        <p id="status" role="status"></p>
-        <div id="cards"></div>
-        <p id="detail-country" class="muted" hidden></p>
-        <p id="no-plate" class="hint" hidden>No plate found — try again closer.</p>
-      </section>
+      <main id="content">
+        <section id="photo-panel">
+          <canvas id="photo-canvas" hidden></canvas>
+          <div id="photo-placeholder" class="empty-state">
+            <span class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1l1.4-2h6.2L16.5 6h1A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>
+            </span>
+            <h2>Scan a license plate</h2>
+            <p>Photos are analyzed on your phone — nothing leaves it.</p>
+          </div>
+        </section>
+        <section id="plates-panel">
+          <p id="status" role="status"></p>
+          <div id="cards"></div>
+          <p id="no-plate" class="hint" hidden>No plate found — try again closer.</p>
+        </section>
+      </main>
       <div id="action-bar">
         <label class="btn primary">
-          📷 Take photo
-          <input id="camera-input" type="file" accept="image/*" capture="environment" hidden />
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1l1.4-2h6.2L16.5 6h1A2.5 2.5 0 0 1 20 8.5v9A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.6"/></svg>
+          Take photo
+          <input id="camera-input" type="file" accept="image/*" capture="environment" />
         </label>
-        <label class="btn">
-          🖼 From gallery
-          <input id="gallery-input" type="file" accept="image/*" hidden />
+        <label class="btn icon" aria-label="Choose from gallery">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="9.5" r="1.6"/><path d="m5 17 4.2-4.2a1.6 1.6 0 0 1 2.3 0L18 19"/><path d="m14.5 15.5 1.7-1.7a1.6 1.6 0 0 1 2.3 0l2 2"/></svg>
+          <input id="gallery-input" type="file" accept="image/*" />
         </label>
       </div>
     </div>

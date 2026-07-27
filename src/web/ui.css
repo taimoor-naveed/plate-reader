@@ -6,71 +6,214 @@
   font-display: swap;
 }
 
-:root { color-scheme: dark light; font-family: system-ui, sans-serif; }
+/* Theme tokens. --header-* stays dark in BOTH themes: iOS standalone draws the
+   status-bar clock white over black-translucent, so the strip under the cutout
+   must keep a dark surface or the clock disappears in light mode. */
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, sans-serif;
+  --header-bg: #12161d;
+  --header-ink: #f2f4f8;
+  --accent: #2e5bff;
+  --accent-deep: #2242d8;
+  --on-accent: #ffffff;
+  --chip: #ffde59;
+  --chip-ink: #15181d;
+  --ok: #1e9e63;
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --surface-2: #e4e8ee;
+  --ink: #171b22;
+  --muted: #5d6674;
+  --line: #d5dae2;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ok: #43c98a;
+    --bg: #0b0e14;
+    --surface: #151a22;
+    --surface-2: #1e2530;
+    --ink: #eef1f6;
+    --muted: #8c96a5;
+    --line: #242c38;
+  }
+}
+
 html, body { height: 100%; }
 body {
   margin: 0;
-  background: #111418;
-  color: #e8eaed;
+  background: var(--bg);
+  color: var(--ink);
   overflow: hidden;
   height: 100dvh;
   overscroll-behavior: none;
 }
-h1 { font-size: 1.3rem; margin: 0; }
-.hint, .muted { color: #9aa0a6; font-size: 0.9rem; }
+.hint { color: var(--muted); font-size: 0.9rem; }
 
-/* App shell: three fixed zones (photo / plates / actions) + header, no whole-page scroll. */
+/* App shell: header / content / actions. The three zones pad themselves out of
+   the hardware zones (cutout, home indicator, side insets in landscape) — the
+   safe-area strips stay empty by design. */
 #shell {
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  max-width: 480px;
+  max-width: 520px;
   margin: 0 auto;
-  padding: 0 16px;
   box-sizing: border-box;
 }
-#topbar { flex: 0 0 auto; padding: 12px 0 8px; }
+#topbar, #content, #action-bar {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
 
+#topbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
+  padding-bottom: 10px;
+  background: var(--header-bg);
+  color: var(--header-ink);
+}
+h1 {
+  font-size: 1.1rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+#privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 550;
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 13%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ok) 30%, transparent);
+  padding: 5px 11px;
+  border-radius: 999px;
+}
+#privacy-badge svg { width: 12px; height: 12px; }
+
+#content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 12px;
+}
+
+/* Empty state: the photo panel fills all free space and centers the invitation.
+   Once a photo is decoded (canvas unhidden) it becomes a bounded card and the
+   plates panel takes over the remaining height. */
 #photo-panel {
-  flex: 0 0 34%;
-  min-height: 140px;
   position: relative;
+  flex: 1 1 auto;
+  min-height: 140px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   overflow: hidden;
-  border-radius: 12px;
-  background: #1b1f24;
-  padding: 12px;
+  border-radius: 20px;
   box-sizing: border-box;
+}
+#content:has(#photo-canvas:not([hidden])) #photo-panel {
+  flex: 0 1 auto;
+  max-height: 44dvh;
+  background: var(--surface);
+  padding: 10px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent) inset;
+}
+#content:has(#photo-canvas:not([hidden])) #plates-panel {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 /* Element box must keep the drawn buffer's aspect ratio: photo-view.ts hit-tests taps
    with rect-relative math that assumes content fills the element. max-w/h + auto lets
    the canvas's intrinsic ratio size the box inside the (flex-centering) panel —
    object-fit would letterbox the content inside a mismatched box and break both the
    displayed size and tap alignment. */
-#photo-canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+#photo-canvas { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; border-radius: 12px; }
 /* display: block above beats the UA's [hidden] rule (ID specificity) — restore it,
    or the empty-state placeholder shares the panel with an invisible flex sibling
    and gets shoved into a narrow off-center column. */
 #photo-canvas[hidden] { display: none; }
 
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 24px;
+}
+/* display: flex above beats the UA's [hidden] rule (author styles win over UA
+   styles) — restore it, or the placeholder stays visible beside the photo. */
+.empty-state[hidden] { display: none; }
+.empty-icon {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 1px var(--line) inset;
+  margin-bottom: 10px;
+}
+.empty-icon svg { width: 38px; height: 38px; }
+.empty-state h2 { margin: 0; font-size: 1.25rem; font-weight: 650; }
+.empty-state p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 30ch; line-height: 1.5; }
+
 #plates-panel {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 10px 0;
   box-sizing: border-box;
 }
-
-#action-bar { flex: 0 0 auto; display: flex; gap: 12px; padding: 12px 0 16px; }
-.btn { flex: 1; text-align: center; padding: 14px; border-radius: 12px; background: #2a2f36; cursor: pointer; user-select: none; }
-.btn.primary { background: #1a73e8; }
+#status {
+  margin: 0 0 10px;
+  display: inline-flex;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+#status:empty { display: none; }
+#no-plate { text-align: center; margin: 10px 0; }
 
 #cards { display: flex; flex-direction: column; gap: 14px; }
-#detail-country { margin: 10px 0 0; }
+
+/* Candidate = meta row (index chip · confidence · country) + the plate card.
+   The chip number matches the box number drawn on the photo. */
+.candidate { display: flex; flex-direction: column; gap: 7px; }
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0 2px;
+}
+.meta .mchip {
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 6px;
+  text-align: center;
+  background: var(--chip);
+  color: var(--chip-ink);
+  font-family: 'FE-Schrift', ui-monospace, monospace;
+  font-size: 0.9rem;
+  line-height: 19px;
+}
+.candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
+.meta .country { margin-left: auto; font-weight: 550; color: var(--ink); }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.
@@ -174,36 +317,96 @@ h1 { font-size: 1.3rem; margin: 0; }
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 10px 8px;
-  border: 1px solid #3c4043;
-  border-radius: 10px;
-  background: #1b1f24;
+  padding: 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
   cursor: pointer;
   font: inherit;
   box-sizing: border-box;
 }
 .plain-card .plate-input {
-  color: #e8eaed;
+  color: var(--ink);
   font-family: ui-monospace, monospace;
   font-size: 1.15rem;
   letter-spacing: 0.08em;
 }
-.plate-card.selected, .plain-card.selected { outline: 3px solid #1a73e8; outline-offset: 2px; }
-.plate-card .index-badge, .plain-card .index-badge {
+.plate-card.selected, .plain-card.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Action bar floats above the home indicator / gesture bar; cards fade out
+   under it while scrolling. */
+#action-bar {
+  flex: 0 0 auto;
+  position: relative;
+  display: flex;
+  gap: 10px;
+  padding-top: 12px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+#action-bar::before {
+  content: '';
   position: absolute;
-  top: -10px;
-  left: -10px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #ffde59;
-  color: #111;
-  font-size: 0.8rem;
-  font-weight: 700;
+  left: 0;
+  right: 0;
+  top: -28px;
+  height: 28px;
+  background: linear-gradient(180deg, transparent, var(--bg));
+  pointer-events: none;
+}
+.btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid #111;
-  z-index: 1;
+  gap: 9px;
+  height: 54px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease;
+}
+.btn:active { transform: scale(0.97); }
+.btn svg { width: 21px; height: 21px; flex: none; }
+.btn.primary {
+  flex: 1;
+  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  color: var(--on-accent);
+  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+}
+.btn.icon {
+  flex: none;
+  width: 54px;
+  border-radius: 18px;
+  color: var(--muted);
+}
+/* file inputs stay focusable (not [hidden]) so the labels show a keyboard ring */
+.btn input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.btn:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* Landscape phones: the cutout moves to a side inset (padded on the three zones
+   above); photo and results sit side by side instead of stacking. */
+@media (orientation: landscape) and (max-height: 500px) {
+  #content { flex-direction: row; align-items: stretch; }
+  #photo-panel { flex: 1 1 50%; }
+  #content:has(#photo-canvas:not([hidden])) #photo-panel {
+    flex: 0 0 46%;
+    max-height: none;
+  }
+  #plates-panel { flex: 1 1 auto; min-height: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn { transition: none; }
+  .btn:active { transform: none; }
 }

@@ -56,15 +56,16 @@ function setStatus(msg: string) {
 }
 
 /**
- * "Country: Germany" from the OCR region head — German-format reads (rule 'DE')
- * only. For any other read the app never guesses a country, no matter what the
- * region head claims.
+ * Right-hand text of a candidate's meta row. German-format reads (rule 'DE')
+ * name the country from the OCR region head — the app never guesses a country
+ * for any other read, no matter what the region head claims; those get a
+ * "check manually" nudge instead.
  */
-function countryLine(c: PlateCandidate): string {
-  if (c.validation.rule !== 'DE') return ''
+function metaCountry(c: PlateCandidate): string {
+  if (c.validation.rule !== 'DE') return 'check manually'
   const region = c.read.region
   if (!region || region === 'Unknown') return ''
-  return `Country: ${region}`
+  return region
 }
 
 /**
@@ -117,18 +118,15 @@ function selectCandidate(index: number) {
   const c = lastResult?.candidates[index]
   if (!c) return
   const cards = $('#cards')
-  cards.querySelectorAll('.plate-card, .plain-card').forEach((el, i) => {
-    el.classList.toggle('selected', i === index)
-    const input = el.querySelector('.plate-input') as HTMLInputElement | null
+  cards.querySelectorAll('.candidate').forEach((wrap, i) => {
+    wrap.classList.toggle('selected', i === index)
+    wrap.querySelector('.plate-card, .plain-card')?.classList.toggle('selected', i === index)
+    const input = wrap.querySelector('.plate-input') as HTMLInputElement | null
     if (input) input.readOnly = i !== index
   })
   view?.select(index)
-  const line = countryLine(c)
-  const countryEl = $('#detail-country')
-  countryEl.textContent = line
-  countryEl.hidden = !line
-  const selectedCard = cards.children[index] as HTMLElement | undefined
-  selectedCard?.scrollIntoView({ block: 'nearest' })
+  const selected = cards.children[index] as HTMLElement | undefined
+  selected?.scrollIntoView({ block: 'nearest' })
 }
 
 /**
@@ -136,17 +134,13 @@ function selectCandidate(index: number) {
  * (stars + "D") + white FE-Schrift face. Anything else renders as a plain neutral
  * chip — no EU band, no plate styling (the read isn't a German plate, so dressing
  * it as one would be a lie). Both variants are tappable and editable in place.
+ * Each card ships inside a .candidate wrapper with a meta row on top: index chip
+ * (matching the box number on the photo), read confidence, country / nudge.
  */
 function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLDivElement {
   const isGerman = c.validation.rule === 'DE'
   const card = document.createElement('div')
   card.className = isGerman ? 'plate-card' : 'plain-card'
-  if (showIndex) {
-    const badge = document.createElement('span')
-    badge.className = 'index-badge'
-    badge.textContent = String(index + 1)
-    card.appendChild(badge)
-  }
   if (isGerman) {
     const band = document.createElement('span')
     band.className = 'eu-band'
@@ -204,7 +198,30 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
       input.setSelectionRange(input.value.length, input.value.length)
     }
   })
-  return card
+
+  const wrap = document.createElement('div')
+  wrap.className = 'candidate'
+  const meta = document.createElement('div')
+  meta.className = 'meta'
+  if (showIndex) {
+    const chip = document.createElement('span')
+    chip.className = 'mchip'
+    chip.textContent = String(index + 1)
+    meta.appendChild(chip)
+  }
+  const conf = document.createElement('span')
+  conf.textContent = `${Math.round(c.validation.confidence * 100)}% read`
+  meta.appendChild(conf)
+  const country = metaCountry(c)
+  if (country) {
+    const span = document.createElement('span')
+    span.className = 'country'
+    span.textContent = country
+    meta.appendChild(span)
+  }
+  wrap.appendChild(meta)
+  wrap.appendChild(card)
+  return wrap
 }
 
 /**
@@ -216,7 +233,6 @@ export function renderResult(result: PipelineResult) {
   lastResult = result
   const cards = $('#cards')
   cards.innerHTML = ''
-  $('#detail-country').hidden = true
 
   view?.setBoxes(result.candidates.map((c) => c.box))
 
@@ -238,7 +254,6 @@ function showPhoto(image: ImageDataLike) {
 async function handleFile(file: File) {
   // reset stale state up front so a failure never shows a previous photo's read
   $('#cards').innerHTML = ''
-  $('#detail-country').hidden = true
   $('#no-plate').hidden = true
   lastResult = null
   try {
