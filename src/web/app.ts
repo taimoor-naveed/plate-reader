@@ -268,7 +268,11 @@ function ensurePanzoom(canvas: HTMLCanvasElement) {
   // the photo always covers the panel — no gaps, no manual snap-back. It assumes
   // the element fills its container at rest, which the CSS guarantees (the panel
   // hugs the canvas exactly; the size cap lives on the canvas itself).
-  const pz = (panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, contain: 'outside', panOnlyWhenZoomed: true }))
+  // step: Panzoom's documented speed knob for wheel AND pinch. The default 0.3
+  // makes pinch crawl behind the fingers (its pinch is linear in pixels:
+  // step/80 scale per px of finger spread); 1 is the commonly recommended
+  // value for a responsive feel while staying on the library's own binding.
+  const pz = (panzoom = Panzoom(canvas, { maxScale: 6, minScale: 1, step: 1, contain: 'outside', panOnlyWhenZoomed: true }))
   const panel = canvas.parentElement!
   panel.addEventListener('wheel', pz.zoomWithWheel)
   canvas.addEventListener('dblclick', () => pz.reset())
