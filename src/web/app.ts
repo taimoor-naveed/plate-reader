@@ -221,9 +221,16 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
  * arbitrarily hid a correct 8-char read with a single 94% character. Verified
  * on the local eval set (30 photos / 42 plates): 35 correct reads shown, zero
  * wrong reads pass at this bar.
+ *
+ * The region check is a second, independent signal: the OCR's country head
+ * must also classify the plate as German. Structure alone can be fooled —
+ * foreign plates one lookalike-correction away from a valid German pattern
+ * read as "certain German" (7 of 108 public mixed-EU scenes; the country head
+ * flagged every one as non-German at prob 1.00). Costs zero correct reads on
+ * the local set (35 kept / 0 lost).
  */
 function isCertain(c: PlateCandidate): boolean {
-  return c.validation.rule === 'DE' && c.validation.confidence >= 0.995
+  return c.validation.rule === 'DE' && c.validation.confidence >= 0.995 && c.read.region === 'Germany'
 }
 
 export function renderResult(result: PipelineResult) {

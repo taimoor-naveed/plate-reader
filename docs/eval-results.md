@@ -254,8 +254,9 @@ each a distinct finding:
    plates). The OCR's region head — computed today but unused for gating —
    identifies all 7 as non-German at probability 1.00, and requiring
    `region == Germany` for certainty costs ZERO correct-certain reads on the
-   private local set (35 kept / 0 lost). Fix is one condition in the app's
-   `isCertain`; deferred by user decision (dataset was filtered instead).
+   private local set (35 kept / 0 lost). ADOPTED later the same day: the app's
+   `isCertain` now requires format match + confidence ≥ 0.995 + region head
+   saying Germany (verified: 35 shown correct / 0 wrong on the local set).
 2. **Authority plates (Behördenkennzeichen):** German plates with no middle
    letters (`HH 07194`, `M 230`) are coerced into standard-format misreads at
    1.00 (`0→O`, `2→Z`) because rules/de.ts only models district+letters+digits.
