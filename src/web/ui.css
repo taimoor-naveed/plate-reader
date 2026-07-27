@@ -208,7 +208,6 @@ h1 {
   line-height: 19px;
 }
 .candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
-.meta .country { margin-left: auto; font-weight: 550; color: var(--ink); }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.

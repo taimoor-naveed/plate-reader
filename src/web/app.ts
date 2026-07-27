@@ -57,19 +57,6 @@ function setStatus(msg: string) {
 }
 
 /**
- * Right-hand text of a candidate's meta row. German-format reads (rule 'DE')
- * name the country from the OCR region head — the app never guesses a country
- * for any other read, no matter what the region head claims; those get a
- * "check manually" nudge instead.
- */
-function metaCountry(c: PlateCandidate): string {
-  if (c.validation.rule !== 'DE') return 'check manually'
-  const region = c.read.region
-  if (!region || region === 'Unknown') return ''
-  return region
-}
-
-/**
  * Keep edits uppercase and within the plate charset; spaces are kept (grouping,
  * best-effort). ÄÖÜ are allowed — the validator auto-applies umlaut districts
  * (e.g. TÖL), so stripping them would wipe the umlaut on the first keystroke.
@@ -202,22 +189,18 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
 
   const wrap = document.createElement('div')
   wrap.className = 'candidate'
-  const meta = document.createElement('div')
-  meta.className = 'meta'
+  // meta row: just the index chip matching the box number on the photo.
+  // No country label — the app only shows German plates, so naming the
+  // country is redundant (reintroduce if more countries are ever supported).
   if (showIndex) {
+    const meta = document.createElement('div')
+    meta.className = 'meta'
     const chip = document.createElement('span')
     chip.className = 'mchip'
     chip.textContent = String(index + 1)
     meta.appendChild(chip)
+    wrap.appendChild(meta)
   }
-  const country = metaCountry(c)
-  if (country) {
-    const span = document.createElement('span')
-    span.className = 'country'
-    span.textContent = country
-    meta.appendChild(span)
-  }
-  if (meta.childElementCount > 0) wrap.appendChild(meta)
   wrap.appendChild(card)
   return wrap
 }
@@ -231,11 +214,16 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
  * Automation bar (user decision 2026-07-27): only German-format reads at full
  * confidence are shown at all — boxes and cards alike. A plate the pipeline
  * can't read with certainty is treated as not read; the user retakes the photo
- * instead of second-guessing a maybe-read. Eval (24 photos / 34 plates):
- * 28 of 30 correct reads survive this bar, all 4 misreads are filtered.
+ * instead of second-guessing a maybe-read.
+ *
+ * The bar is 0.995, not 1.0: confidence is a mean of per-char probabilities
+ * (+0.05 format bonus, clamped), so 0.995 = "rounds to 100%" — a strict 1.0
+ * arbitrarily hid a correct 8-char read with a single 94% character. Verified
+ * on the local eval set (30 photos / 42 plates): 35 correct reads shown, zero
+ * wrong reads pass at this bar.
  */
 function isCertain(c: PlateCandidate): boolean {
-  return c.validation.rule === 'DE' && c.validation.confidence >= 1
+  return c.validation.rule === 'DE' && c.validation.confidence >= 0.995
 }
 
 export function renderResult(result: PipelineResult) {
