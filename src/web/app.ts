@@ -52,8 +52,13 @@ function ensureSessions(): Promise<PipelineSessions> {
 // ensureSessions() again on first use and surfaces any error there.
 void ensureSessions().catch(() => {})
 
+/** Error line under the photo (progress is the #busy spinner, not text). */
 function setStatus(msg: string) {
   $('#status').textContent = msg
+}
+
+function setBusy(busy: boolean) {
+  $('#busy').hidden = !busy
 }
 
 /**
@@ -297,17 +302,18 @@ async function handleFile(file: File) {
   $('#cards').innerHTML = ''
   $('#no-plate').hidden = true
   lastResult = null
+  setStatus('')
+  setBusy(true)
   try {
-    setStatus('Reading photo…')
     const [s, image] = await Promise.all([ensureSessions(), fileToImageData(file)])
     currentImage = image
     showPhoto(image)
-    setStatus('Looking for plates…')
     const result = await extractPlates(currentImage, s)
-    setStatus('')
     renderResult(result)
   } catch (err) {
     setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`)
+  } finally {
+    setBusy(false)
   }
 }
 
