@@ -1,4 +1,5 @@
 import type { Correction } from '../types'
+import { ISSUED_DISTRICTS } from './de-districts'
 
 export interface RuleMatch {
   plate: string
@@ -59,11 +60,15 @@ function forceClass(
  * Try to interpret `raw` (normalized A-Z0-9) as a German plate.
  * Tries every segmentation; returns the one needing the fewest corrections (max 2), else null.
  */
+/** Issued check for an ASCII district as read by OCR (TOL counts via TÖL). */
+const issuedDistrict = (d: string) => ISSUED_DISTRICTS.has(d) || ISSUED_DISTRICTS.has(UMLAUT_DISTRICTS[d] ?? '')
+
 export function matchGerman(raw: string): RuleMatch | null {
   const n = raw.length
   if (n < 3 || n > MAX_TOTAL_LEN) return null
 
   let best: RuleMatch | null = null
+  let bestIssued = false
   for (let a = 1; a <= 3; a++) {
     for (let b = 1; b <= 2; b++) {
       for (const withSuffix of [false, true]) {
@@ -83,13 +88,24 @@ export function matchGerman(raw: string): RuleMatch | null {
         if (digits[0] === '0') continue
         if (corrections.length > MAX_CORRECTIONS) continue
 
-        // Tie-break policy: at equal correction count, the FIRST valid
-        // segmentation in iteration order (a asc, b asc, no-suffix first)
-        // wins — i.e. the shortest district. plate and corrections are
-        // identical across such ties; display spacing and parts
-        // (district/letters) depend on the chosen split. Deterministic
-        // by construction.
-        if (!best || corrections.length < best.corrections.length) {
+        // Tie-break policy at equal correction count (the characters are
+        // identical across ties; only the district|letters split differs):
+        // 1. a district that is actually issued beats one that is not
+        //    (fixes BXY123 -> B XY 123: "BX" is not a code);
+        // 2. when BOTH splits are issued codes (DAP151: D=Düsseldorf,
+        //    DA=Darmstadt) the text alone cannot decide — only the seal
+        //    position on the physical plate could — and the longer district
+        //    is the better default;
+        // 3. when neither is issued there is no signal: keep the first
+        //    (shortest-district) split, as before the registry existed.
+        const isIssued = issuedDistrict(district)
+        const better =
+          !best ||
+          corrections.length < best.corrections.length ||
+          (corrections.length === best.corrections.length &&
+            (Number(isIssued) > Number(bestIssued) ||
+              (isIssued && bestIssued && district.length > best.parts.district.length)))
+        if (better) {
           const plate = district + letters + digits + suffix
           best = {
             plate,
@@ -97,6 +113,7 @@ export function matchGerman(raw: string): RuleMatch | null {
             corrections,
             parts: { district, letters, digits, suffix },
           }
+          bestIssued = isIssued
         }
       }
     }

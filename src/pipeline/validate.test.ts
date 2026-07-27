@@ -25,6 +25,20 @@ describe('matchGerman', () => {
     expect(m.parts.district).toBe('TOL')
   })
 
+  it('splits by issued district: BXY123 -> B XY 123 (no district "BX")', () => {
+    const m = matchGerman('BXY123')!
+    expect(m.display).toBe('B XY 123')
+    expect(m.parts.district).toBe('B')
+  })
+
+  it('prefers the longer district when both splits are issued: DAP151 -> DA P 151', () => {
+    // D (Düsseldorf) and DA (Darmstadt) are both issued; the text alone cannot
+    // decide, and the longer district is the documented default.
+    const m = matchGerman('DAP151')!
+    expect(m.display).toBe('DA P 151')
+    expect(m.parts).toEqual({ district: 'DA', letters: 'P', digits: '151', suffix: '' })
+  })
+
   it('corrects digit-lookalike in district: 0KXY226 -> OK XY 226', () => {
     const m = matchGerman('0KXY226')!
     expect(m.plate).toBe('OKXY226')
