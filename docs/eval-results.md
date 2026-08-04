@@ -314,3 +314,19 @@ Reconciliation of the −3, from per-candidate diagnosis:
   read; hiding them is the intended trade for keeping "0 wrong" airtight.
 - A fourth ambiguous read was already hidden by the confidence bar (0.94,
   the right-edge-clipped read from Addendum 1).
+
+**Review round 2 (same day, adversarial re-review of the branch):** two gate
+gaps closed, both verified as zero-cost on the local set (still 36/42 found,
+32 shown / 0 wrong):
+
+- **Cross-grammar ties are now ambiguous too.** `AB123` parses with zero
+  corrections as standard `A B 123` AND authority `AB 123` (both districts
+  issued); the standard reading still wins the display (standard plates
+  dominate), but the tie is flagged and the read hidden — a real authority
+  plate would otherwise surface as a wrong-but-certain standard read. The
+  first round only compared segmentations within the same grammar.
+- **Certain reads must carry an issued district.** The matcher always knew
+  whether the winning district is issued but dropped that fact; a clean
+  full-confidence read of a nonexistent district (`Q Q 1234`) could pass the
+  gate. `PlateValidation.districtIssued` now feeds `isCertain`. Non-issued
+  reads still format and stay editable — rules refine, they never reject.

@@ -8,12 +8,16 @@ export interface RuleMatch {
   parts: { district: string; letters: string; digits: string; suffix: string }
   /**
    * True when another issued-district segmentation ties the winner at equal
-   * corrections with a different reading (BLA1234: B LA 1234 vs BL A 1234).
-   * The text alone cannot decide such ties — only the seal position on the
-   * physical plate could — so the certainty gate must treat the read as
-   * uncertain even though the returned split is the documented best guess.
+   * corrections with a different reading — in the same grammar (BLA1234:
+   * B LA 1234 vs BL A 1234) or across grammars (AB123: standard A B 123 vs
+   * authority AB 123, both issued). The text alone cannot decide such ties —
+   * only the seal position on the physical plate could — so the certainty
+   * gate must treat the read as uncertain even though the returned split is
+   * the documented best guess.
    */
   ambiguous: boolean
+  /** Whether the winning district code is actually issued (TOL counts via TÖL). */
+  districtIssued: boolean
 }
 
 /** digit -> letter lookalike (applied in letter positions) */
@@ -157,15 +161,16 @@ export function matchGerman(raw: string): RuleMatch | null {
   for (const c of candidates) if (!best || betterThan(c, best)) best = c
   if (!best) return null
 
-  // Ambiguous iff the winner's equivalence class BEFORE the arbitrary
-  // longer-district tie-break (same corrections, issued, same grammar)
-  // contains more than one distinct reading — and the districts are issued,
-  // so both readings are real possibilities (non-issued ties carry no signal
-  // worth surfacing).
+  // Ambiguous iff more than one distinct ISSUED reading exists at the
+  // winner's correction count — across grammars: an issued authority reading
+  // (AB 123) contests an issued standard one (A B 123) just as a second
+  // standard split does. The preference order above still picks the display,
+  // but a preference is not a decision the text can actually make. Non-issued
+  // ties carry no signal worth surfacing (and a non-issued winner implies no
+  // issued candidate exists at its correction count — issued always wins the
+  // comparator at equal corrections).
   const chosen = best
-  const tied = candidates.filter(
-    (c) => c.corrections.length === chosen.corrections.length && c.issued === chosen.issued && c.authority === chosen.authority,
-  )
+  const tied = candidates.filter((c) => c.corrections.length === chosen.corrections.length && c.issued)
   const ambiguous = chosen.issued && new Set(tied.map((c) => c.display)).size > 1
 
   const { district, letters, digits, suffix } = chosen.parts
@@ -175,5 +180,6 @@ export function matchGerman(raw: string): RuleMatch | null {
     corrections: chosen.corrections,
     parts: chosen.parts,
     ambiguous,
+    districtIssued: chosen.issued,
   }
 }

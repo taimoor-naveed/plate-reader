@@ -44,6 +44,20 @@ describe('isCertain', () => {
     }
   })
 
+  it('rejects the cross-grammar issued tie AB123 (standard A B 123 vs authority AB 123)', () => {
+    const c = candidate('AB123')
+    expect(c.validation.ambiguous).toBe(true)
+    expect(isCertain(c)).toBe(false)
+  })
+
+  it('rejects a clean full-confidence read whose district was never issued', () => {
+    const c = candidate('QQ1234') // parses as Q Q 1234, but no district "Q" exists
+    expect(c.validation.corrections).toEqual([])
+    expect(c.validation.confidence).toBe(1)
+    expect(c.validation.districtIssued).toBe(false)
+    expect(isCertain(c)).toBe(false)
+  })
+
   it('rejects reads below the 0.995 confidence bar', () => {
     expect(isCertain(candidate('BNCR788', { probs: [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9] }))).toBe(false)
   })

@@ -17,10 +17,16 @@ import type { PlateCandidate } from './types'
  *   definition not a certain read of what's on the plate.
  *
  * - not ambiguous: when several issued-district segmentations tie at equal
- *   corrections (BLA1234: B LA 1234 vs BL A 1234), the text alone cannot
- *   decide which district is on the plate — only the seal position could.
- *   The matcher still returns its documented best guess for display/editing
- *   flows, but a guess between real alternatives is not a certain read.
+ *   corrections — within a grammar (BLA1234: B LA 1234 vs BL A 1234) or
+ *   across grammars (AB123: standard A B 123 vs authority AB 123) — the
+ *   text alone cannot decide which district is on the plate — only the seal
+ *   position could. The matcher still returns its documented best guess for
+ *   display/editing flows, but a guess between real alternatives is not a
+ *   certain read.
+ *
+ * - issued district: a reading whose district code was never issued cannot
+ *   be what's on a real German plate, no matter how confident the OCR is —
+ *   a "certain" read of a nonexistent district is a misread by definition.
  *
  * - confidence ≥ 0.995, not 1.0: confidence is a mean of per-char
  *   probabilities (+0.05 format bonus, clamped), so 0.995 = "rounds to 100%"
@@ -39,6 +45,7 @@ export function isCertain(c: PlateCandidate): boolean {
     c.validation.rule === 'DE' &&
     c.validation.corrections.length === 0 &&
     !c.validation.ambiguous &&
+    c.validation.districtIssued &&
     c.validation.confidence >= 0.995 &&
     c.read.region === 'Germany'
   )

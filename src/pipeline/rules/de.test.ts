@@ -25,23 +25,39 @@ describe('authority plates (Behördenkennzeichen: district + digits, no middle l
     expect(matchGerman('ABCDE012')).toBeNull()
   })
 
-  it('loses the tie to an uncorrected standard match: AB123 -> A B 123', () => {
+  it('loses the tie to an uncorrected standard match, but the tie is ambiguous: AB123', () => {
     // A|B|123 (standard) and AB|123 (authority, AB = Aschaffenburg) both need
-    // zero corrections; standard plates are vastly more common, so authority
-    // only wins on strictly fewer corrections — and the resolved tie is not
-    // reported as ambiguous.
+    // zero corrections. Standard plates are vastly more common, so the
+    // standard reading wins the display — but both readings are issued, so
+    // the tie is reported as ambiguous and the certainty gate hides the read
+    // (a real Aschaffenburg authority plate would otherwise be shown as a
+    // wrong-but-certain A B 123).
     const m = matchGerman('AB123')!
     expect(m.display).toBe('A B 123')
-    expect(m.ambiguous).toBe(false)
+    expect(m.ambiguous).toBe(true)
+    expect(m.districtIssued).toBe(true)
   })
 
   it('an issued authority district beats non-issued standard splits: QLB123 -> QLB 123', () => {
     // QLB (Quedlinburg) is issued; neither Q nor QL is — issued-ness outranks
-    // the standard-over-authority preference.
+    // the standard-over-authority preference, and non-issued alternatives
+    // never make a tie ambiguous.
     const m = matchGerman('QLB123')!
     expect(m.display).toBe('QLB 123')
     expect(m.parts.district).toBe('QLB')
     expect(m.corrections).toEqual([])
+    expect(m.ambiguous).toBe(false)
+    expect(m.districtIssued).toBe(true)
+  })
+
+  it('exposes districtIssued=false for cleanly-parsing nonexistent districts', () => {
+    // Q Q 1234 parses with zero corrections, but no district "Q" was ever
+    // issued — the certainty gate uses this to reject the read.
+    const m = matchGerman('QQ1234')!
+    expect(m.display).toBe('Q Q 1234')
+    expect(m.corrections).toEqual([])
+    expect(m.districtIssued).toBe(false)
+    expect(m.ambiguous).toBe(false)
   })
 })
 

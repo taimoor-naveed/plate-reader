@@ -53,6 +53,11 @@ export interface PlateValidation {
    * RuleMatch.ambiguous in rules/de.ts). Always false when no rule matched.
    */
   ambiguous: boolean
+  /**
+   * Whether the matched district code is actually issued (umlaut mapping
+   * counts: TOL is issued via TÖL). Always false when no rule matched.
+   */
+  districtIssued: boolean
   /** Matching rule id, e.g. "DE", or null. */
   rule: string | null
   /** Mean per-char OCR probability, +0.05 if a rule matched (clamped to 1). */

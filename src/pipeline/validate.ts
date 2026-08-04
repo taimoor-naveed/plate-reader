@@ -31,6 +31,7 @@ export function validate(rawText: string, charProbs: number[]): PlateValidation 
       formatValid: true,
       corrections: m.corrections,
       ambiguous: m.ambiguous,
+      districtIssued: m.districtIssued,
       rule: 'DE',
       confidence: clamp01(meanProb + 0.05),
     }
@@ -42,6 +43,7 @@ export function validate(rawText: string, charProbs: number[]): PlateValidation 
     formatValid: false,
     corrections: [],
     ambiguous: false,
+    districtIssued: false,
     rule: null,
     confidence: clamp01(meanProb),
   }
