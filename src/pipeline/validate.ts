@@ -24,9 +24,13 @@ export function validate(rawText: string, charProbs: number[]): PlateValidation 
     return {
       raw,
       plate: district + m.parts.letters + m.parts.digits + m.parts.suffix,
-      display: `${district} ${m.parts.letters} ${m.parts.digits}${m.parts.suffix}`,
+      // authority matches (Behördenkennzeichen) have no middle letter group
+      display: m.parts.letters
+        ? `${district} ${m.parts.letters} ${m.parts.digits}${m.parts.suffix}`
+        : `${district} ${m.parts.digits}${m.parts.suffix}`,
       formatValid: true,
       corrections: m.corrections,
+      ambiguous: m.ambiguous,
       rule: 'DE',
       confidence: clamp01(meanProb + 0.05),
     }
@@ -37,6 +41,7 @@ export function validate(rawText: string, charProbs: number[]): PlateValidation 
     display: raw,
     formatValid: false,
     corrections: [],
+    ambiguous: false,
     rule: null,
     confidence: clamp01(meanProb),
   }

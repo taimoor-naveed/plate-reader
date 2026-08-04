@@ -1,6 +1,7 @@
 import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
+import { isCertain } from '../pipeline/certainty'
 import { loadWebSession } from './ort-web'
 import { fileToImageData } from './decode'
 import { renderPhotoView, type PhotoView } from './photo-view'
@@ -215,30 +216,8 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
  * overlay. Owns lastResult so selection always matches what is on screen.
  * Exported for headless UI verification (driven with synthetic results).
  */
-/**
- * Automation bar (user decision 2026-07-27): only German-format reads at full
- * confidence are shown at all — boxes and cards alike. A plate the pipeline
- * can't read with certainty is treated as not read; the user retakes the photo
- * instead of second-guessing a maybe-read.
- *
- * The bar is 0.995, not 1.0: confidence is a mean of per-char probabilities
- * (+0.05 format bonus, clamped), so 0.995 = "rounds to 100%" — a strict 1.0
- * arbitrarily hid a correct 8-char read with a single 94% character. Verified
- * on the local eval set (30 photos / 42 plates): 35 correct reads shown, zero
- * wrong reads pass at this bar.
- *
- * The region check is a second, independent signal: the OCR's country head
- * must also classify the plate as German. Structure alone can be fooled —
- * foreign plates one lookalike-correction away from a valid German pattern
- * read as "certain German" (7 of 108 public mixed-EU scenes; the country head
- * flagged every one as non-German at prob 1.00). Costs zero correct reads on
- * the local set (35 kept / 0 lost).
- */
-function isCertain(c: PlateCandidate): boolean {
-  return c.validation.rule === 'DE' && c.validation.confidence >= 0.995 && c.read.region === 'Germany'
-}
-
 export function renderResult(result: PipelineResult) {
+  // only certain reads are shown at all — policy lives in pipeline/certainty.ts
   result = { ...result, candidates: result.candidates.filter(isCertain) }
   lastResult = result
   const cards = $('#cards')

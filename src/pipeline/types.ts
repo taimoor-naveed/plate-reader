@@ -48,6 +48,11 @@ export interface PlateValidation {
   display: string
   formatValid: boolean
   corrections: Correction[]
+  /**
+   * True when equally-plausible issued-district segmentations tie (see
+   * RuleMatch.ambiguous in rules/de.ts). Always false when no rule matched.
+   */
+  ambiguous: boolean
   /** Matching rule id, e.g. "DE", or null. */
   rule: string | null
   /** Mean per-char OCR probability, +0.05 if a rule matched (clamped to 1). */

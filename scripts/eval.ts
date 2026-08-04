@@ -4,6 +4,8 @@ import { loadNodeSession } from '../src/node/ort-node'
 import { decodeImageFile, saveRegionPng } from '../src/node/decode'
 import { extractPlates } from '../src/pipeline/pipeline'
 import { normalizePlateText } from '../src/pipeline/validate'
+import { isCertain } from '../src/pipeline/certainty'
+import { foldUmlauts } from '../src/pipeline/rules/de'
 import { crop, expandBox } from '../src/pipeline/image'
 
 function arg(name: string, def: string): string {
@@ -38,6 +40,9 @@ fs.mkdirSync('eval/out', { recursive: true })
 let platesExpected = 0
 let platesFound = 0
 let photosFull = 0
+// The app-level view: reads passing the certainty gate are what the user sees.
+let shownCorrect = 0
+let shownWrong = 0
 let totalMs = 0
 const results: object[] = []
 
@@ -46,15 +51,23 @@ console.log(
     `${smallBoxMargin ? ' +smallBoxMargin' : ''}${normalizeCrop ? ' +normalizeCrop' : ''}${rotationSweep ? ` +rotationSweep=${rotationSweep.join(',')}` : ''}\n`,
 )
 for (const [file, want] of Object.entries(expected)) {
-  const plates = (Array.isArray(want) ? want : [want]).map(normalizePlateText)
+  // fold umlauts on BOTH sides: expected values may be written either way,
+  // and the validator now maps districts like TU -> TÜ (normalizePlateText
+  // would silently strip an unfolded Ü, corrupting the comparison)
+  const plates = (Array.isArray(want) ? want : [want]).map((p) => normalizePlateText(foldUmlauts(p)))
   const image = await decodeImageFile(path.join('attachments', file))
   const res = await extractPlates(image, { detector, ocr }, { detectorSize, cropMargin, smallBoxMargin, normalizeCrop, rotationSweep })
   totalMs += res.timings.totalMs
-  const got = res.candidates.map((c) => c.validation.plate)
+  const got = res.candidates.map((c) => foldUmlauts(c.validation.plate))
   const missed = plates.filter((p) => !got.includes(p))
   const extras = got.filter((g) => !plates.includes(g))
   platesExpected += plates.length
   platesFound += plates.length - missed.length
+  // what the app would actually show for this photo (the certainty gate)
+  const shown = res.candidates.filter(isCertain).map((c) => foldUmlauts(c.validation.plate))
+  const wrongShown = shown.filter((p) => !plates.includes(p))
+  shownCorrect += shown.length - wrongShown.length
+  shownWrong += wrongShown.length
 
   let status: string
   if (missed.length === 0) {
@@ -69,15 +82,15 @@ for (const [file, want] of Object.entries(expected)) {
     const b = expandBox(res.candidates[0].box, 0.1, image.width, image.height)
     await saveRegionPng(crop(image, b), `eval/out/${file.replace('.jpg', '')}-crop.png`)
   }
-  results.push({ file, want: plates, got, status, ms: Math.round(res.timings.totalMs) })
+  results.push({ file, want: plates, got, shown, status, ms: Math.round(res.timings.totalMs) })
   console.log(
-    `${status.padEnd(28)} ${file}  found=${plates.length - missed.length}/${plates.length}${extras.length ? `  extra=${extras.join(',')}` : ''}  ${Math.round(res.timings.totalMs)}ms`,
+    `${status.padEnd(28)} ${file}  found=${plates.length - missed.length}/${plates.length}  shown=${shown.length - wrongShown.length}/${plates.length}${wrongShown.length ? `  WRONG-SHOWN=${wrongShown.join(',')}` : ''}${extras.length ? `  extra=${extras.join(',')}` : ''}  ${Math.round(res.timings.totalMs)}ms`,
   )
 }
 
 const n = Object.keys(expected).length
 console.log(
-  `\nplates found: ${platesFound}/${platesExpected}   photos fully covered: ${photosFull}/${n}   avg ${Math.round(totalMs / n)}ms/image`,
+  `\nplates found: ${platesFound}/${platesExpected}   photos fully covered: ${photosFull}/${n}   shown (certainty gate): ${shownCorrect} correct / ${shownWrong} wrong   avg ${Math.round(totalMs / n)}ms/image`,
 )
 // "extra" reads are informational, not failures: often a real plate we deemed
 // unreadable during labeling, or a misread of one — inspect, don't panic.

@@ -269,3 +269,48 @@ Note: ground-truth filenames cannot encode umlauts; comparisons must fold
 Ä/Ö/Ü or the validator's legitimate umlaut-district reads (RÜD) count as
 errors. Larger German source for future calibration: Kaggle
 "Germany License Plate Dataset" (~178k crops) — requires a Kaggle login.
+
+---
+
+## Addendum 3 (2026-08-04): Codex review fixes — gate tightened, authority grammar, eval now measures the gate
+
+Fixes from the 2026-08-04 adversarial review (branch `fix/codex-review-findings`):
+
+- **Certainty policy extracted** to `src/pipeline/certainty.ts` and consumed by
+  the app, the eval harnesses (`scripts/eval.ts`, `src/web/eval.ts`) and tests —
+  one gate, no drift. The eval now reports a `shown=` column per photo and a
+  summary `shown (certainty gate): N correct / M wrong`, so the previously
+  hand-counted "35 shown / 0 wrong" claim is reproducible mechanically.
+- **Gate tightened** (both per the review): a read with lookalike corrections
+  can reach the confidence bar via the +0.05 format bonus but is no longer
+  certain (`corrections.length === 0` required), and a read whose
+  district|letters split ties between several issued districts at equal
+  corrections (`BLA1234`: B LA vs BL A) is flagged `ambiguous` by the matcher
+  and hidden — text alone cannot decide such ties, only the seal position
+  on the physical plate could (policy decision: option (a), 2026-08-04).
+- **Authority plates** (Behördenkennzeichen, district + 1-6 digits with no
+  middle letters, leading zeros allowed) are now a second grammar in
+  `rules/de.ts`. Public-set regressions `HH 07194` / `M 230` (Addendum 2 #2)
+  now read correctly with zero corrections instead of being coerced into
+  corrected standard-format misreads. An authority match only beats a standard
+  match on strictly fewer corrections, so it never displaces a clean read.
+- **`UMLAUT_DISTRICTS` is now derived** from the issued registry instead of a
+  20-entry hand list (which was missing 20 safe mappings, including TU→TÜ —
+  the old comment wrongly claimed TU = Tuttlingen; Tuttlingen is TUT). Exactly
+  BO and MU stay excluded: their ASCII forms are themselves issued. Eval
+  comparisons now fold Ä/Ö/Ü on both sides accordingly.
+
+**Local-set numbers (30 photos / 42 plates), same detector/OCR defaults:**
+plates found **36/42** (unchanged — the grammar additions altered no read),
+shown at the certainty gate **32 correct / 0 wrong** (was 35 / 0).
+Reconciliation of the −3, from per-candidate diagnosis:
+
+- The zero-corrections requirement costs **zero** correct reads here — every
+  local read at the bar was already correction-free.
+- All 3 newly-hidden reads (one plate appearing in two photos, plus one more)
+  are **genuine issued-district split ambiguities** (a 3-vs-2-letter district
+  tie and a 2-vs-1-letter district tie). The longer-district heuristic had
+  guessed them right, but under option (a) an undecidable tie is not a certain
+  read; hiding them is the intended trade for keeping "0 wrong" airtight.
+- A fourth ambiguous read was already hidden by the confidence bar (0.94,
+  the right-edge-clipped read from Addendum 1).

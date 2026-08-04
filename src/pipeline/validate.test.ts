@@ -33,10 +33,12 @@ describe('matchGerman', () => {
 
   it('prefers the longer district when both splits are issued: DAP151 -> DA P 151', () => {
     // D (Düsseldorf) and DA (Darmstadt) are both issued; the text alone cannot
-    // decide, and the longer district is the documented default.
+    // decide, and the longer district is the documented default — but the tie
+    // is reported as ambiguous so the certainty gate hides the read.
     const m = matchGerman('DAP151')!
     expect(m.display).toBe('DA P 151')
     expect(m.parts).toEqual({ district: 'DA', letters: 'P', digits: '151', suffix: '' })
+    expect(m.ambiguous).toBe(true)
   })
 
   it('corrects digit-lookalike in district: 0KXY226 -> OK XY 226', () => {
@@ -74,10 +76,14 @@ describe('matchGerman', () => {
     expect(matchGerman('D1')).toBeNull()
   })
 
-  it('tie-break: equal-correction segmentations keep the shortest district', () => {
-    const m = matchGerman('TUXY1234')!
-    expect(m.parts.district).toBe('TU')
+  it('tie-break: when neither split is issued, keep the shortest district', () => {
+    // QQ|AB|12 and QQA|B|12 both parse with zero corrections; neither QQ nor
+    // QQA is an issued code, so there is no signal — first (shortest) wins,
+    // and a no-signal tie is not reported as ambiguous.
+    const m = matchGerman('QQAB12')!
+    expect(m.parts.district).toBe('QQ')
     expect(m.corrections).toEqual([])
+    expect(m.ambiguous).toBe(false)
   })
 })
 
@@ -113,8 +119,28 @@ describe('validate', () => {
     expect(v.display).toBe('BN CR 788')
   })
 
-  it('does not umlaut-map real issued codes TU/MU', () => {
-    expect(validate('TUXY1234', [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]).plate).toBe('TUXY1234')
+  it('does not umlaut-map real issued codes BO/MU (the ASCII read is genuinely that district)', () => {
+    expect(validate('BOAB123', [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]).plate).toBe('BOAB123')
     expect(validate('MUAB123', [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9]).plate).toBe('MUAB123')
+  })
+
+  it('maps TU -> TÜ: TU itself is not issued (Tuttlingen is TUT, Tübingen is TÜ)', () => {
+    const v = validate('TUXY1234', [0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9, 0.9])
+    expect(v.plate).toBe('TÜXY1234')
+    expect(v.display).toBe('TÜ XY 1234')
+    expect(v.raw).toBe('TUXY1234')
+  })
+
+  it('renders authority matches without the empty letter group', () => {
+    const v = validate('HH07194', [1, 1, 1, 1, 1, 1, 1])
+    expect(v.display).toBe('HH 07194')
+    expect(v.plate).toBe('HH07194')
+    expect(v.corrections).toEqual([])
+  })
+
+  it('passes the ambiguity flag through', () => {
+    expect(validate('BLA1234', [1, 1, 1, 1, 1, 1, 1]).ambiguous).toBe(true)
+    expect(validate('BNCR788', [1, 1, 1, 1, 1, 1, 1]).ambiguous).toBe(false)
+    expect(validate('XR25GB', [1, 1, 1, 1, 1, 1]).ambiguous).toBe(false)
   })
 })
