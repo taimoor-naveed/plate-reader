@@ -330,3 +330,100 @@ gaps closed, both verified as zero-cost on the local set (still 36/42 found,
   full-confidence read of a nonexistent district (`Q Q 1234`) could pass the
   gate. `PlateValidation.districtIssued` now feeds `isCertain`. Non-issued
   reads still format and stay editable — rules refine, they never reject.
+
+---
+
+## Addendum 4 (2026-08-10): recognition levers — tiling, deskew, escalation, edge policy
+
+User request: improve segmentation/OCR (explicitly NOT the post-extraction
+rules) for plates that are clearly human-readable but missed. Root-causing the
+6 baseline misses on the 30-photo set found exactly two classes:
+
+- **(a) small/distant plates** (4 of 6): photos are ~4000px wide but the
+  detector sees a 384px letterbox — a 100-150px plate shrinks to ~10-14px,
+  below the detector's floor. `detector=512` (Step 1) never fixed this because
+  4000→512 is still an 8× shrink.
+- **(c') heavily tilted crops** (2 of 6): the Addendum-1 reclassification was
+  right — both misreads are ~50° tilted boxes (taller than wide), squashed
+  diagonally into the 128×64 OCR input.
+
+Four levers shipped as opt-in `PipelineOptions` (`tiling`, `deskew`,
+`escalate` + a certainty-side edge policy), enabled together in the app
+(`src/web/app.ts`) and via `npm run eval -- --levers`:
+
+1. **Additive tiled detection** (`tiling`): detector also runs over 1024px
+   tiles with 20% overlap. STRICTLY additive — full-frame boxes always win;
+   tile boxes only add where IoU < 0.3 vs every full-frame box. Seam-clipped
+   tile detections are DISCARDED, never repaired (a half plate reads as a
+   plausible truncated plate); the 205px overlap guarantees any plate small
+   enough to need tiling lands whole in a neighboring tile. Added boxes
+   touching the photo border or wider than 400px are dropped, cap 3.
+   (A score-based NMS merge was tried first and broke 2 previously-correct
+   reads — additivity is the load-bearing property, not an optimization.)
+2. **Geometric deskew fallback** (`deskew`): only for gate-FAILING reads on
+   tilt-suspicious boxes (h/w > 0.7). One angle is chosen by geometry — sweep
+   ±75° coarse then ±10° fine, maximizing re-detected box w/h × score — and
+   OCR runs ONCE at that angle on the re-detected tight box. This respects
+   the Addendum-1 verdict: no mean-charProb argmax across angles (that
+   manufactures wrong-at-1.00 reads; reconfirmed during prototyping when a
+   PCA-angle variant read a correct plate wrong at conf 0.97). Adopted only
+   if the deskewed read passes the full gate. Fixes both tilted misreads at
+   conf 1.00.
+3. **OCR escalation** (`escalate`): gate-failing reads get one retry with
+   `cct_s` (`sessions.ocrFallback`), adopted only if certain. Fixes the
+   remaining one-char misread (blurry first letter at 0.27 with `xs`; `s`
+   reads the plate at 1.00 at every margin). Unlike the Step-1 wholesale
+   `ocr=s` switch (rejected: 2× latency, no wins), this costs nothing on the
+   happy path.
+4. **Certainty edge policy + corroboration** (`certainty.ts`): tiling
+   surfaces plates physically clipped by the photo border — truncated reads
+   that are format-valid and bonus-carried over the bar. Frame-edge boxes
+   (`PlateCandidate.frameEdge`) get no format bonus: raw mean charProb must
+   clear 0.995 alone. This kills the observed clipped reads (raw 0.86-0.96 on
+   the cut character) while keeping a complete plate that merely sits flush
+   against the border (raw 1.0). Tile-pass candidates additionally need the
+   second OCR model to corroborate the text on the same crop (same length,
+   ≤1 char apart) or they are `uncorroborated` — never certain. In stress
+   tests (tile=1280) a background plate with a dropped final digit passed the
+   gate at raw 0.958 + bonus; corroboration blocks exactly that class.
+
+**Results (same 30 photos / 42 plates):**
+
+| config | plates found | photos covered | shown | avg ms/image (node) |
+|---|---|---|---|---|
+| baseline (no flags — UNCHANGED) | 36/42 | 25/30 | 32 correct / 0 wrong | ~28 |
+| `--deskew --escalate` (the app's config) | 38/42 | 26/30 | 34 correct / 0 wrong | ~120 (typical photo ~30; only fallback-firing photos pay) |
+| `--levers` (adds tiling) | **42/42** | **30/30** | **38 correct / 0 wrong** | ~550 |
+
+**App config decision (2026-08-10, user):** tiling's ~17 detector passes per
+photo are seconds on single-thread wasm — too slow on the phone. The app runs
+`deskew + escalate` only (all 4 tiling misses are small BACKGROUND plates;
+the photographed plate itself is always found by the full-frame pass). If
+background plates become worth it, the path is progressive integration
+(render the fast result first, append tile finds as they arrive) and/or
+enabling wasm threads via crossOriginIsolation — not re-enabling inline.
+
+The 6 newly-shown reads: the two deskewed tilt cases, the escalated one-char
+case, and three tile-found small plates (one further tile find stays hidden as
+a genuine issued-district split ambiguity, consistent with Addendum 3; one
+complete-but-edge-flush read passes the raw-confidence edge bar).
+
+**Safety design note:** every lever runs ONLY on reads that already failed
+the certainty gate, and its result is adopted ONLY if it passes the gate —
+certain reads are never touched, so the levers cannot regress a correct
+result; they can only convert misses. Verified: baseline run is bit-identical
+with all flags off.
+
+**Known limits / observations:**
+
+- Latency: ~17 detector passes/photo with tiling (0.5s node, more in wasm).
+  If it bothers in the app, integrate progressively: render full-frame
+  results immediately, add tile finds when they arrive.
+- Residual edge hole: a plate clipped exactly at a character boundary can
+  read 1.0-raw and pass the edge bar; nothing image-side can detect that.
+- Config fragility: tile=1280 both loses a plate and (without corroboration)
+  shows a wrong one — the shipped 1024/0.2 is validated, don't drift casually.
+- Recurring pattern flagged for a future gate decision (rules were out of
+  scope here): EVERY wrong-certain read encountered in this investigation was
+  a sub-0.995 raw read pushed over the bar by the +0.05 format bonus; the
+  bonus never rescued a correct read at the bar on this set.

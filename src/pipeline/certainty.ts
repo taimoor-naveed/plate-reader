@@ -39,8 +39,30 @@ import type { PlateCandidate } from './types'
  *   read as "certain German" (7 of 108 public mixed-EU scenes; the country
  *   head flagged every one as non-German at prob 1.00). Costs zero correct
  *   reads on the local eval set.
+ *
+ * - frame-edge boxes get no format bonus (2026-08-10): a plate cut off by the
+ *   photo border yields a truncated read that is itself format-valid (think
+ *   "BN CR 788" clipped to a confident "BN CR 7") — structure cannot vouch
+ *   for completeness, so for boxes touching the border the RAW mean charProb
+ *   must clear the bar alone. A complete plate that merely sits flush against
+ *   the border still passes (its raw confidence is ~1.0); the observed
+ *   clipped reads all hovered at 0.86-0.96 on the cut character and only
+ *   reached the bar via the +0.05 bonus. Residual known hole: a plate clipped
+ *   exactly at a character boundary can read 1.0-raw; nothing image-side can
+ *   detect that.
+ *
+ * - corroboration (2026-08-10): tile-pass candidates (small/distant plates
+ *   the full-frame detector missed) are a newer, riskier channel — in stress
+ *   tests a tile read with a dropped final digit passed the gate at raw
+ *   0.958 + bonus. Such candidates carry uncorroborated=true unless a second
+ *   OCR model read the same crop and agreed (same length, <=1 char apart);
+ *   uncorroborated reads are never certain.
  */
+const rawMean = (probs: number[]) => (probs.length ? probs.reduce((a, b) => a + b, 0) / probs.length : 0)
+
 export function isCertain(c: PlateCandidate): boolean {
+  if (c.uncorroborated) return false
+  if (c.frameEdge && rawMean(c.read.charProbs) < 0.995) return false
   return (
     c.validation.rule === 'DE' &&
     c.validation.corrections.length === 0 &&

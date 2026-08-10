@@ -8,9 +8,10 @@ import { fileToImageData, cropToDataUrl } from './decode'
 const summary = document.getElementById('summary')!
 const cards = document.getElementById('cards')!
 
-const [detector, ocr] = await Promise.all([
+const [detector, ocr, ocrFallback] = await Promise.all([
   loadWebSession(`${import.meta.env.BASE_URL}models/yolo-v9-t-384-license-plates-end2end.onnx`),
   loadWebSession(`${import.meta.env.BASE_URL}models/cct_xs_v2_global.onnx`),
+  loadWebSession(`${import.meta.env.BASE_URL}models/cct_s_v2_global.onnx`),
 ])
 // value: one plate or an unordered array of ALL readable plates (equal priority) — mirrors scripts/eval.ts
 const expected: Record<string, string | string[]> = await (await fetch('/eval-data/expected.json')).json()
@@ -28,7 +29,8 @@ for (const [file, want] of Object.entries(expected)) {
   const plates = (Array.isArray(want) ? want : [want]).map((p) => normalizePlateText(foldUmlauts(p)))
   const blob = await (await fetch(`/attachments/${file}`)).blob()
   const image = await fileToImageData(blob)
-  const res = await extractPlates(image, { detector, ocr })
+  // same lever config as the app (src/web/app.ts) — this harness measures what the app does
+  const res = await extractPlates(image, { detector, ocr, ocrFallback }, { deskew: true, escalate: true })
   const got = res.candidates.map((c) => foldUmlauts(c.validation.plate))
   const found = plates.filter((p) => got.includes(p))
   const pass = found.length === plates.length

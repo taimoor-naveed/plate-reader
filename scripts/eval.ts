@@ -24,6 +24,10 @@ const cropMargin = Number(arg('margin', '0'))
 const smallBoxMargin = flag('small-margin')
 const normalizeCrop = flag('normalize-crop')
 const rotationSweep = flag('rotation-sweep') ? [-10, -5, 0, 5, 10] : undefined
+// recognition levers (2026-08-10) — opt-in; `--levers` enables all three (the app's config)
+const tiling = flag('tiled') || flag('levers')
+const deskew = flag('deskew') || flag('levers')
+const escalate = flag('escalate') || flag('levers')
 
 const expectedPath = 'eval/expected.json'
 if (!fs.existsSync(expectedPath)) {
@@ -35,6 +39,8 @@ const expected: Record<string, string | string[]> = JSON.parse(fs.readFileSync(e
 
 const detector = await loadNodeSession(`public/models/yolo-v9-t-${detectorSize}-license-plates-end2end.onnx`)
 const ocr = await loadNodeSession(`public/models/${ocrName}.onnx`)
+// escalation + tile-candidate corroboration both need the larger model
+const ocrFallback = tiling || escalate ? await loadNodeSession('public/models/cct_s_v2_global.onnx') : undefined
 fs.mkdirSync('eval/out', { recursive: true })
 
 let platesExpected = 0
@@ -48,7 +54,8 @@ const results: object[] = []
 
 console.log(
   `config: detector=${detectorSize} ocr=${ocrName} margin=${cropMargin}` +
-    `${smallBoxMargin ? ' +smallBoxMargin' : ''}${normalizeCrop ? ' +normalizeCrop' : ''}${rotationSweep ? ` +rotationSweep=${rotationSweep.join(',')}` : ''}\n`,
+    `${smallBoxMargin ? ' +smallBoxMargin' : ''}${normalizeCrop ? ' +normalizeCrop' : ''}${rotationSweep ? ` +rotationSweep=${rotationSweep.join(',')}` : ''}` +
+    `${tiling ? ' +tiled' : ''}${deskew ? ' +deskew' : ''}${escalate ? ' +escalate' : ''}\n`,
 )
 for (const [file, want] of Object.entries(expected)) {
   // fold umlauts on BOTH sides: expected values may be written either way,
@@ -56,7 +63,11 @@ for (const [file, want] of Object.entries(expected)) {
   // would silently strip an unfolded Ü, corrupting the comparison)
   const plates = (Array.isArray(want) ? want : [want]).map((p) => normalizePlateText(foldUmlauts(p)))
   const image = await decodeImageFile(path.join('attachments', file))
-  const res = await extractPlates(image, { detector, ocr }, { detectorSize, cropMargin, smallBoxMargin, normalizeCrop, rotationSweep })
+  const res = await extractPlates(
+    image,
+    { detector, ocr, ocrFallback },
+    { detectorSize, cropMargin, smallBoxMargin, normalizeCrop, rotationSweep, tiling, deskew, escalate },
+  )
   totalMs += res.timings.totalMs
   const got = res.candidates.map((c) => foldUmlauts(c.validation.plate))
   const missed = plates.filter((p) => !got.includes(p))

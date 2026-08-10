@@ -78,3 +78,25 @@ describe('isCertain', () => {
     expect(isCertain(candidate('XR25GB'))).toBe(false)
   })
 })
+
+describe('isCertain — frame edge and corroboration (2026-08-10)', () => {
+  it('frame-edge box: the format bonus cannot carry the read over the bar', () => {
+    // truncation shape from the eval set (a longer plate clipped by the photo
+    // border to a shorter, still-valid read): raw mean 0.964, bonus lifts to
+    // 1.0. Interior box passes; the same read at the photo border must not.
+    const probs = [1, 0.98, 0.98, 1, 0.86]
+    const inside = candidate('BNCR7', { probs })
+    expect(isCertain(inside)).toBe(true)
+    expect(isCertain({ ...candidate('BNCR7', { probs }), frameEdge: true })).toBe(false)
+  })
+
+  it('frame-edge box with raw confidence at the bar still passes (complete plate flush with the border)', () => {
+    expect(isCertain({ ...candidate('BNCR13'), frameEdge: true })).toBe(true)
+  })
+
+  it('uncorroborated tile-pass reads are never certain', () => {
+    const c = candidate('BNCR788')
+    expect(isCertain(c)).toBe(true)
+    expect(isCertain({ ...c, uncorroborated: true })).toBe(false)
+  })
+})

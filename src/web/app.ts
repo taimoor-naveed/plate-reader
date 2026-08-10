@@ -20,11 +20,13 @@ function loadSessions(): Promise<PipelineSessions> {
     // for `base`, but never inside TS string literals — a bare '/models/...'
     // would 404 under the GitHub Pages subpath (/plate-reader/).
     const base = import.meta.env.BASE_URL
-    const [detector, ocr] = await Promise.all([
+    const [detector, ocr, ocrFallback] = await Promise.all([
       loadWebSession(`${base}models/yolo-v9-t-384-license-plates-end2end.onnx`),
       loadWebSession(`${base}models/cct_xs_v2_global.onnx`),
+      // larger OCR: escalation fallback + tile-candidate corroboration
+      loadWebSession(`${base}models/cct_s_v2_global.onnx`),
     ])
-    return { detector, ocr }
+    return { detector, ocr, ocrFallback }
   })()
 }
 
@@ -280,18 +282,39 @@ export function showPhoto(image: ImageDataLike) {
   panzoom?.reset({ animate: false })
 }
 
+/**
+ * Resolve after the browser has painted the current frame. Double rAF: the
+ * first callback runs BEFORE the next paint, the second one after it — a
+ * single rAF would let the wasm inference block the thread pre-paint and the
+ * user would never see what was just drawn.
+ */
+const nextPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
 async function handleFile(file: File) {
   // reset stale state up front so a failure never shows a previous photo's read
   $('#cards').innerHTML = ''
   $('#no-plate').hidden = true
   lastResult = null
   setStatus('')
-  setBusy(true)
   try {
-    const [s, image] = await Promise.all([ensureSessions(), fileToImageData(file)])
+    // photo first, search second (user decision 2026-08-10): decoding is
+    // fast and local, while sessions may still be downloading and inference
+    // blocks the main thread for a while — show the photo and the busy
+    // spinner, wait for that frame to actually paint, and only then start
+    // the heavy work.
+    const image = await fileToImageData(file)
     currentImage = image
     showPhoto(image)
-    const result = await extractPlates(currentImage, s)
+    setBusy(true)
+    await nextPaint()
+    const s = await ensureSessions()
+    // recognition levers (2026-08-10): deskew + escalation only fire on reads
+    // that FAIL the certainty gate, so normal photos pay nothing. Tiling
+    // (small background plates) is deliberately OFF here: ~17 detector passes
+    // per photo is seconds on single-thread wasm — user-rejected. If those
+    // plates become worth it, integrate it progressively (render this result
+    // first, append tile finds as they arrive) instead of re-enabling inline.
+    const result = await extractPlates(currentImage, s, { deskew: true, escalate: true })
     renderResult(result)
   } catch (err) {
     setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`)
