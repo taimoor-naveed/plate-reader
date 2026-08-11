@@ -427,3 +427,43 @@ with all flags off.
   scope here): EVERY wrong-certain read encountered in this investigation was
   a sub-0.995 raw read pushed over the bar by the +0.05 format bonus; the
   bonus never rescued a correct read at the bar on this set.
+
+---
+
+## Addendum 5 (2026-08-11): simplification — tiling removed, cct_s primary, gate shows ambiguous reads
+
+Four user decisions after living with Addendum 4 on the phone:
+
+1. **Tiled detection REMOVED entirely** (not just disabled): the latency was
+   rejected and background plates aren't worth the code. With it went its
+   dependents: seam handling, additive merge, cross-model corroboration and
+   the `uncorroborated` flag. `git log` has it if ever wanted again.
+2. **cct_s is now the ONE OCR model, used from the start.** Measured before
+   deciding: as primary it scored identically to the xs-then-s escalation
+   architecture (38/42 found, same shown set) at ~25ms/photo extra in node —
+   a two-model app bought nothing, so the app loads two models total
+   (384 detector + cct_s) and the download SHRANK ~3.3MB vs Addendum 4.
+   The `escalate` option remains in the pipeline for experiments (eval
+   `--escalate` retries gate-failing reads with the model not used as
+   primary); the app doesn't use it.
+3. **Frame-edge rule REMOVED**: it existed to guard the tile channel's
+   clipped-plate reads; its one observed base-box effect was hiding a correct
+   read. Known accepted risk: a plate cut by the photo border can read as a
+   shorter valid plate at full confidence (Addendum 2 #3 class).
+4. **Ambiguity and non-issued districts no longer gate** (reverts the
+   2026-08-04 hiding policy): a full-confidence, zero-correction read whose
+   district SPLIT is undecidable (DA·H vs D·AH) is still the right character
+   string — only the displayed grouping embodies a guess, and the user chose
+   "show it, a wrong city guess is fine". Same for districts missing from
+   the registry. `ambiguous` / `districtIssued` stay in the validation as
+   information. Trigger case: a perfectly-read e-plate (8 chars, district
+   tie) hidden by the old policy despite every charProb at 1.00.
+
+**Results (30 photos / 42 plates), app config = cct_s + deskew:**
+38/42 found, 26/30 photos covered, **38 shown correct / 0 wrong**, ~93ms
+avg/image in node (typical photo ~35ms; only deskew-firing photos pay more).
+Every found plate is now shown — the gate and the reader agree on this set.
+The 4 not-found plates are the small background plates that only tiling
+reached. Known trade vs Addendum 4: "0 wrong shown" now rests on
+format+confidence+region alone; the public-set foreign-plate guard (region
+head) and the corrections guard both remain.

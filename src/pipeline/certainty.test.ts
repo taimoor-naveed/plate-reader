@@ -36,26 +36,26 @@ describe('isCertain', () => {
     expect(isCertain(c)).toBe(false)
   })
 
-  it('rejects ambiguous issued-district ties (BLA1234, MAB123, DAP151)', () => {
+  it('shows ambiguous issued-district ties — the string is certain, only the grouping is a guess (2026-08-11)', () => {
     for (const text of ['BLA1234', 'MAB123', 'DAP151']) {
       const c = candidate(text)
-      expect(c.validation.confidence).toBe(1)
-      expect(isCertain(c)).toBe(false)
+      expect(c.validation.ambiguous).toBe(true) // still reported, no longer gates
+      expect(isCertain(c)).toBe(true)
     }
   })
 
-  it('rejects the cross-grammar issued tie AB123 (standard A B 123 vs authority AB 123)', () => {
+  it('shows the cross-grammar tie AB123 — same characters under either reading (2026-08-11)', () => {
     const c = candidate('AB123')
-    expect(c.validation.ambiguous).toBe(true)
-    expect(isCertain(c)).toBe(false)
+    expect(c.validation.ambiguous).toBe(true) // still reported, no longer gates
+    expect(isCertain(c)).toBe(true)
   })
 
-  it('rejects a clean full-confidence read whose district was never issued', () => {
-    const c = candidate('QQ1234') // parses as Q Q 1234, but no district "Q" exists
-    expect(c.validation.corrections).toEqual([])
-    expect(c.validation.confidence).toBe(1)
+  it('shows a clean full-confidence read even of a non-issued district (2026-08-11)', () => {
+    // user decision: a wrong district guess is acceptable, hiding a
+    // confidently-read plate is not — districtIssued is informational now
+    const c = candidate('QQ1234')
     expect(c.validation.districtIssued).toBe(false)
-    expect(isCertain(c)).toBe(false)
+    expect(isCertain(c)).toBe(true)
   })
 
   it('rejects reads below the 0.995 confidence bar', () => {
@@ -76,27 +76,5 @@ describe('isCertain', () => {
 
   it('rejects reads with no matching rule', () => {
     expect(isCertain(candidate('XR25GB'))).toBe(false)
-  })
-})
-
-describe('isCertain — frame edge and corroboration (2026-08-10)', () => {
-  it('frame-edge box: the format bonus cannot carry the read over the bar', () => {
-    // truncation shape from the eval set (a longer plate clipped by the photo
-    // border to a shorter, still-valid read): raw mean 0.964, bonus lifts to
-    // 1.0. Interior box passes; the same read at the photo border must not.
-    const probs = [1, 0.98, 0.98, 1, 0.86]
-    const inside = candidate('BNCR7', { probs })
-    expect(isCertain(inside)).toBe(true)
-    expect(isCertain({ ...candidate('BNCR7', { probs }), frameEdge: true })).toBe(false)
-  })
-
-  it('frame-edge box with raw confidence at the bar still passes (complete plate flush with the border)', () => {
-    expect(isCertain({ ...candidate('BNCR13'), frameEdge: true })).toBe(true)
-  })
-
-  it('uncorroborated tile-pass reads are never certain', () => {
-    const c = candidate('BNCR788')
-    expect(isCertain(c)).toBe(true)
-    expect(isCertain({ ...c, uncorroborated: true })).toBe(false)
   })
 })

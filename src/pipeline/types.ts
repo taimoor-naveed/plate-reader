@@ -68,15 +68,4 @@ export interface PlateCandidate {
   box: Box
   read: OcrRead
   validation: PlateValidation
-  /**
-   * Box touches the photo border (within a couple of px): the plate may
-   * physically continue beyond the frame, so a truncated read can look
-   * complete AND format-valid. Certainty treats these reads more strictly.
-   */
-  frameEdge?: boolean
-  /**
-   * Tile-pass candidate whose corroboration read (the other OCR model on the
-   * same crop) disagreed — or could not run. Never certain.
-   */
-  uncorroborated?: boolean
 }

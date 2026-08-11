@@ -25,12 +25,14 @@ if (!fs.existsSync(path.join(dist, 'sw.js'))) {
 }
 
 // Trim the deploy: these ship in public/models/ for the local eval/probe CLIs
-// but the built app never requests them — dead weight otherwise. The app
-// loads the 384 detector + BOTH OCR models (cct_s is the escalation/
-// corroboration fallback since 2026-08-10 — trimming it broke the deployed
-// app with "failed to load external data"); only the 512 detector is unused.
+// but the built app never requests them — dead weight otherwise. Since
+// 2026-08-11 the app loads exactly TWO models: the 384 detector and cct_s
+// (the single OCR model). Keep this list in sync with src/web/app.ts —
+// trimming a model the app requests breaks the deployed app at startup
+// ("failed to load external data", 2026-08-11 incident).
 const UNUSED_IN_APP = [
   'models/yolo-v9-t-512-license-plates-end2end.onnx',
+  'models/cct_xs_v2_global.onnx',
 ]
 for (const rel of UNUSED_IN_APP) {
   const p = path.join(dist, rel)

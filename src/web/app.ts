@@ -20,13 +20,14 @@ function loadSessions(): Promise<PipelineSessions> {
     // for `base`, but never inside TS string literals — a bare '/models/...'
     // would 404 under the GitHub Pages subpath (/plate-reader/).
     const base = import.meta.env.BASE_URL
-    const [detector, ocr, ocrFallback] = await Promise.all([
+    // cct_s as the ONE OCR model (user decision 2026-08-11): reads slightly
+    // better than cct_xs at ~25ms/photo extra — a two-tier xs-then-s setup
+    // measured identical accuracy, so the simpler single-model app won.
+    const [detector, ocr] = await Promise.all([
       loadWebSession(`${base}models/yolo-v9-t-384-license-plates-end2end.onnx`),
-      loadWebSession(`${base}models/cct_xs_v2_global.onnx`),
-      // larger OCR: escalation fallback + tile-candidate corroboration
       loadWebSession(`${base}models/cct_s_v2_global.onnx`),
     ])
-    return { detector, ocr, ocrFallback }
+    return { detector, ocr }
   })()
 }
 
@@ -308,13 +309,9 @@ async function handleFile(file: File) {
     setBusy(true)
     await nextPaint()
     const s = await ensureSessions()
-    // recognition levers (2026-08-10): deskew + escalation only fire on reads
-    // that FAIL the certainty gate, so normal photos pay nothing. Tiling
-    // (small background plates) is deliberately OFF here: ~17 detector passes
-    // per photo is seconds on single-thread wasm — user-rejected. If those
-    // plates become worth it, integrate it progressively (render this result
-    // first, append tile finds as they arrive) instead of re-enabling inline.
-    const result = await extractPlates(currentImage, s, { deskew: true, escalate: true })
+    // deskew only fires on reads that FAIL the certainty gate on a
+    // tilt-suspicious box, so normal photos pay nothing for it
+    const result = await extractPlates(currentImage, s, { deskew: true })
     renderResult(result)
   } catch (err) {
     setStatus(`Error: ${err instanceof Error ? err.message : String(err)}`)

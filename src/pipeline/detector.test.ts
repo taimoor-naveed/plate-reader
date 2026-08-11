@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { toDetectorTensor, decodeDetections, iou, nms, tileGrid, touchesEdge } from './detector'
+import { toDetectorTensor, decodeDetections, touchesEdge } from './detector'
 import type { ImageDataLike, TensorLike } from './types'
 
 describe('toDetectorTensor', () => {
@@ -63,52 +63,6 @@ describe('decodeDetections', () => {
   it('returns empty array for empty output', () => {
     const out: TensorLike = { type: 'float32', data: new Float32Array(0), dims: [0, 7] }
     expect(decodeDetections(out, { ratio: 1, dw: 0, dh: 0 }, 100, 100)).toEqual([])
-  })
-})
-
-describe('iou / nms', () => {
-  const box = (x1: number, y1: number, x2: number, y2: number, score = 1) => ({ x1, y1, x2, y2, score })
-
-  it('iou: identical boxes -> 1, disjoint -> 0, half overlap computed', () => {
-    expect(iou(box(0, 0, 10, 10), box(0, 0, 10, 10))).toBeCloseTo(1)
-    expect(iou(box(0, 0, 10, 10), box(20, 20, 30, 30))).toBe(0)
-    // [0,10]x[0,10] vs [5,15]x[0,10]: inter 50, union 150
-    expect(iou(box(0, 0, 10, 10), box(5, 0, 15, 10))).toBeCloseTo(1 / 3)
-  })
-
-  it('nms keeps the higher-score box of an overlapping pair, both of a disjoint pair', () => {
-    const kept = nms([box(0, 0, 10, 10, 0.5), box(1, 0, 11, 10, 0.9), box(50, 50, 60, 60, 0.3)])
-    expect(kept).toHaveLength(2)
-    expect(kept[0]!.score).toBe(0.9)
-    expect(kept.map((b) => b.x1).sort((a, b) => a - b)).toEqual([1, 50])
-  })
-})
-
-describe('tileGrid', () => {
-  it('returns no tiles when the image fits in one tile', () => {
-    expect(tileGrid(1024, 768, 1024, 0.2)).toEqual([])
-  })
-
-  it('covers the full image with overlapping, in-bounds tiles', () => {
-    const tiles = tileGrid(4000, 2252, 1024, 0.2)
-    expect(tiles.length).toBeGreaterThan(0)
-    for (const t of tiles) {
-      expect(t.x1).toBeGreaterThanOrEqual(0)
-      expect(t.y1).toBeGreaterThanOrEqual(0)
-      expect(t.x2).toBeLessThanOrEqual(4000)
-      expect(t.y2).toBeLessThanOrEqual(2252)
-      expect(t.x2 - t.x1).toBeLessThanOrEqual(1024)
-      expect(t.y2 - t.y1).toBeLessThanOrEqual(1024)
-    }
-    // full coverage: the corners of the image are inside some tile
-    expect(Math.min(...tiles.map((t) => t.x1))).toBe(0)
-    expect(Math.min(...tiles.map((t) => t.y1))).toBe(0)
-    expect(Math.max(...tiles.map((t) => t.x2))).toBe(4000)
-    expect(Math.max(...tiles.map((t) => t.y2))).toBe(2252)
-    // seam-safety: consecutive column starts advance by at most tile - overlap*tile,
-    // so any object smaller than the overlap lands whole in some tile
-    const xs = [...new Set(tiles.map((t) => t.x1))].sort((a, b) => a - b)
-    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeLessThanOrEqual(1024 * 0.8 + 1e-9)
   })
 })
 
