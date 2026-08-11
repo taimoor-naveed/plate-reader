@@ -25,11 +25,12 @@ if (!fs.existsSync(path.join(dist, 'sw.js'))) {
 }
 
 // Trim the deploy: these ship in public/models/ for the local eval/probe CLIs
-// but the built app never requests them (src/web/app.ts loads only the 384
-// detector and the xs OCR model) — ~13 MB of dead weight otherwise.
+// but the built app never requests them — dead weight otherwise. The app
+// loads the 384 detector + BOTH OCR models (cct_s is the escalation/
+// corroboration fallback since 2026-08-10 — trimming it broke the deployed
+// app with "failed to load external data"); only the 512 detector is unused.
 const UNUSED_IN_APP = [
   'models/yolo-v9-t-512-license-plates-end2end.onnx',
-  'models/cct_s_v2_global.onnx',
 ]
 for (const rel of UNUSED_IN_APP) {
   const p = path.join(dist, rel)
