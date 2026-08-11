@@ -39,8 +39,8 @@
 ## Brand assets — FLEXOPTIX
 
 - **Files:** inline eyecon SVG in `index.html`, `public/favicon.svg`,
-  `public/icon-192.png` / `public/icon-512.png` (rasterized from the official
-  `favicon-96.svg`)
+  `public/icon-*.png` (launcher icons composed from the official eyecon plus
+  a license-plate element by `scripts/make-app-icons.mjs`)
 - **Source:** FLEXOPTIX brand package (`flexoptix-ai-brand-system/logos/`),
   used verbatim / exported at size — never redrawn.
 - **License:** © FLEXOPTIX GmbH, internal use.
