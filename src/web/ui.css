@@ -1,3 +1,8 @@
+/* FLEXOPTIX brand UI (flexoptix-ai-brand-system): closed palette, Inter
+   Variable, dark-first. Every hex in this file is either a token from
+   DESIGN.md or part of the German-plate reproduction (see the .plate-card
+   block — a physical object rendered faithfully, not UI chrome). */
+
 @font-face {
   font-family: 'FE-Schrift';
   src: url('./fonts/GL-Nummernschild-Mtl.ttf') format('truetype');
@@ -5,38 +10,35 @@
   font-style: normal;
   font-display: swap;
 }
-
-/* Theme tokens. --header-* stays dark in BOTH themes: iOS standalone draws the
-   status-bar clock white over black-translucent, so the strip under the cutout
-   must keep a dark surface or the clock disappears in light mode. */
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, sans-serif;
-  --header-bg: #12161d;
-  --header-ink: #f2f4f8;
-  --accent: #2e5bff;
-  --accent-deep: #2242d8;
-  --on-accent: #ffffff;
-  --chip: #ffde59;
-  --chip-ink: #15181d;
-  --ok: #1e9e63;
-  --bg: #eef0f4;
-  --surface: #ffffff;
-  --surface-2: #e4e8ee;
-  --ink: #171b22;
-  --muted: #5d6674;
-  --line: #d5dae2;
+/* Inter Variable (latin subset), bundled from the brand package — self-hosted
+   so the PWA stays offline-capable and makes no cross-origin requests. */
+@font-face {
+  font-family: 'Inter';
+  src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ok: #43c98a;
-    --bg: #0b0e14;
-    --surface: #151a22;
-    --surface-2: #1e2530;
-    --ink: #eef1f6;
-    --muted: #8c96a5;
-    --line: #242c38;
-  }
+
+/* FLEXOPTIX tokens (DESIGN.md tokens.color — the palette is closed, no other
+   hex is permitted in UI chrome). One dark theme only: the brand is dark-first
+   for all digital output, and the iOS standalone status bar (white clock over
+   black-translucent) needs a dark strip under the cutout anyway — an FO Black
+   canvas satisfies both at once. */
+:root {
+  color-scheme: dark;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --bg: #00080a; /* FO Black — canvas */
+  --surface: #090f11; /* FO Black 80 — cards / panels */
+  --surface-2: #121718; /* FO Black 60 — elevated surface */
+  --line: #1b1e1f; /* FO Black 40 — borders, dividers */
+  --ink: #ffffff; /* FO White — primary text */
+  --muted: #999999; /* FO White 20 — secondary text */
+  --faint: #737373; /* FO White 10 — captions (AA large/caption only) */
+  --accent: #ff6b00; /* FO Orange — THE accent: selection + primary CTA */
+  --accent-hover: #ff8933; /* FO Orange 80 — pressed state */
+  --on-accent: #00080a; /* FO Black on orange (approved CTA pairing) */
+  --error: #ef4444; /* semantic error — functional only, on FO Black only */
 }
 
 html, body { height: 100%; }
@@ -47,11 +49,27 @@ body {
   overflow: hidden;
   height: 100dvh;
   overscroll-behavior: none;
+  font-size: 15px;
   /* app, not web page: no double-tap zoom (panning/scrolling still allowed;
      the photo canvas gets its own pinch-zoom via Panzoom) */
   touch-action: manipulation;
 }
-.hint { color: var(--muted); font-size: 0.9rem; }
+/* Brand effect (DESIGN.md effects.film-grain): fractal-noise grain at 3% over
+   the dark canvas — the signature texture, non-interactive by construction. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Brand typography: headings are uppercase, always (CSS-enforced). */
+h1, h2, h3, h4 { text-transform: uppercase; }
+
+.hint { color: var(--muted); font-size: 15px; line-height: 1.6; }
 
 /* App shell: header / content / actions. The three zones pad themselves out of
    the hardware zones (cutout, home indicator, side insets in landscape) — the
@@ -74,23 +92,32 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-top: calc(env(safe-area-inset-top, 0px) + 10px);
-  padding-bottom: 10px;
-  background: var(--header-bg);
-  color: var(--header-ink);
+  gap: 16px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
 }
+/* Official eyecon (inline SVG in index.html, white variant on dark) + app name. */
+#brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+#brand svg { width: 22px; height: 22px; flex: none; }
 h1 {
-  font-size: 1.1rem;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   margin: 0;
+  white-space: nowrap;
 }
 #app-build {
-  font-size: 0.68rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 500;
   letter-spacing: 0.02em;
-  color: color-mix(in srgb, var(--header-ink) 40%, transparent);
+  font-variant-numeric: tabular-nums;
+  color: var(--faint);
   user-select: none;
 }
 #content {
@@ -98,13 +125,15 @@ h1 {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-top: 12px;
+  gap: 16px;
+  padding-top: 16px;
 }
 
-/* Empty state: the photo panel fills all free space and centers the invitation.
-   Once a photo is decoded (canvas unhidden) it becomes a bounded card and the
-   plates panel takes over the remaining height. */
+/* Empty state: the photo panel fills all free space as a brand card (FO Black
+   80 surface, 1px FO Black 40 border, 40px card radius per DESIGN.md) and
+   centers the invitation block. Once a photo is decoded (canvas unhidden) it
+   becomes a bounded region and the plates panel takes over the remaining
+   height. */
 #photo-panel {
   position: relative;
   flex: 1 1 auto;
@@ -112,18 +141,23 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  text-align: center;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: 40px;
+  background: var(--surface);
+  border: 1px solid var(--line);
   box-sizing: border-box;
 }
 /* With a photo, the panel hugs the canvas exactly (no padding, no fixed height):
    Panzoom's contain: 'outside' needs element == container at rest, and portrait
-   photos letterbox/clip if the cap sits on the panel instead of the canvas. */
+   photos letterbox/clip if the cap sits on the panel instead of the canvas.
+   The card dressing comes off — the photo is the surface now. */
 #content:has(#photo-canvas:not([hidden])) #photo-panel {
   flex: 0 0 auto;
   align-self: center;
   max-width: 100%;
+  background: none;
+  border: none;
+  border-radius: 24px;
 }
 #content:has(#photo-canvas:not([hidden])) #plates-panel {
   flex: 1 1 auto;
@@ -139,14 +173,16 @@ h1 {
    the canvas's intrinsic ratio size the box inside the (flex-centering) panel —
    object-fit would letterbox the content inside a mismatched box and break both the
    displayed size and tap alignment. */
-#photo-canvas { max-width: 100%; max-height: 44dvh; width: auto; height: auto; display: block; border-radius: 20px; }
+#photo-canvas { max-width: 100%; max-height: 44dvh; width: auto; height: auto; display: block; border-radius: 24px; }
 /* display: block above beats the UA's [hidden] rule (ID specificity) — restore it,
    or the empty-state placeholder shares the panel with an invisible flex sibling
    and gets shoved into a narrow off-center column. */
 #photo-canvas[hidden] { display: none; }
 
 /* Progress: a spinner over the photo area instead of flash-text status lines.
-   Covers the panel (dims a photo behind it, blocks taps while working). */
+   Covers the panel (dims a photo behind it, blocks taps while working).
+   FO Black at 60% alpha — a functional darkening overlay on imagery, the one
+   sanctioned overlay class (DESIGN.md image treatment). */
 #busy {
   position: absolute;
   inset: 0;
@@ -154,15 +190,16 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--bg) 35%, transparent);
+  background: rgba(0, 8, 10, 0.6);
 }
 #busy[hidden] { display: none; } /* display:flex beats the UA [hidden] rule */
 #photo-panel:has(> #busy:not([hidden])) .empty-state { visibility: hidden; }
+/* Orange as signal LED (brand: accent = signal), track in FO Black 40. */
 .spinner {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 3.5px solid var(--line);
+  border: 3px solid var(--line);
   border-top-color: var(--accent);
   animation: spin 0.8s linear infinite;
 }
@@ -171,31 +208,37 @@ h1 {
   .spinner { animation-duration: 1.8s; }
 }
 
+/* Invitation block: editorial, left-aligned (brand: body copy is never
+   centered), sparse — the whitespace is intentional. */
 .empty-state {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 24px;
+  align-items: flex-start;
+  text-align: left;
+  gap: 8px;
+  width: 100%;
+  padding: 32px;
+  box-sizing: border-box;
 }
 /* display: flex above beats the UA's [hidden] rule (author styles win over UA
    styles) — restore it, or the placeholder stays visible beside the photo. */
 .empty-state[hidden] { display: none; }
-.empty-icon {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  background: var(--surface);
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
   color: var(--muted);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 1px var(--line) inset;
-  margin-bottom: 10px;
 }
-.empty-icon svg { width: 38px; height: 38px; }
-.empty-state h2 { margin: 0; font-size: 1.25rem; font-weight: 650; }
-.empty-state p { margin: 0; color: var(--muted); font-size: 0.9rem; max-width: 30ch; line-height: 1.5; }
+.empty-state h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+.empty-state p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 15px; max-width: 34ch; line-height: 1.6; }
 
 #plates-panel {
   flex: 0 0 auto;
@@ -203,49 +246,59 @@ h1 {
   -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
 }
+/* Error line (progress is the spinner, not text): semantic error is
+   functional-only and sits on FO Black — badge style per DESIGN_PRINCIPLES
+   (status color text over the status color at 15% on black). */
 #status {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   display: inline-flex;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--muted);
-  font-size: 0.85rem;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--error);
+  font-size: 13px;
+  font-weight: 500;
 }
 #status:empty { display: none; }
-#no-plate { text-align: center; margin: 10px 0; }
+#no-plate { text-align: left; margin: 8px 2px; }
 
-#cards { display: flex; flex-direction: column; gap: 14px; }
+#cards { display: flex; flex-direction: column; gap: 16px; }
 
-/* Candidate = meta row (index chip · confidence · country) + the plate card.
-   The chip number matches the box number drawn on the photo. */
-.candidate { display: flex; flex-direction: column; gap: 7px; }
+/* Candidate = meta row (index chip) + the plate card. The chip mirrors the
+   numbered tag drawn on the photo exactly: FO White for unselected, FO Orange
+   for selected — selection is the screen's single accent use. */
+.candidate { display: flex; flex-direction: column; gap: 8px; }
 .meta {
   display: flex;
   align-items: center;
-  gap: 9px;
-  font-size: 0.8rem;
+  gap: 8px;
+  font-size: 11px;
   color: var(--muted);
   padding: 0 2px;
 }
 .meta .mchip {
-  min-width: 19px;
-  height: 19px;
-  padding: 0 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
   border-radius: 6px;
   text-align: center;
-  background: var(--chip);
-  color: var(--chip-ink);
-  font-family: 'FE-Schrift', ui-monospace, monospace;
-  font-size: 0.9rem;
-  line-height: 19px;
+  background: var(--ink);
+  color: var(--bg);
+  font-weight: 600;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  box-sizing: border-box;
 }
 .candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.
    container-type: size lets children size themselves in cqh (% of plate height),
-   which is what the anatomy is specified in. */
+   which is what the anatomy is specified in.
+   NOTE: every color below reproduces the PHYSICAL German plate (EU-band blue,
+   star yellow, seal green/silver, white face) — content, not UI chrome. The
+   closed brand palette deliberately does not apply inside this card. */
 .plate-card {
   position: relative;
   display: flex;
@@ -338,15 +391,16 @@ h1 {
 }
 .plate-input[readonly] { cursor: pointer; }
 /* Non-German read (validation.rule !== 'DE'): neutral chip — deliberately NOT
-   dressed as any country's plate, and never paired with a country line. */
+   dressed as any country's plate, and never paired with a country line. This
+   one IS brand UI: surface card, Inter. */
 .plain-card {
   position: relative;
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 14px 10px;
+  padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 16px;
   background: var(--surface);
   cursor: pointer;
   font: inherit;
@@ -354,21 +408,24 @@ h1 {
 }
 .plain-card .plate-input {
   color: var(--ink);
-  font-family: ui-monospace, monospace;
-  font-size: 1.15rem;
+  font-family: 'Inter', ui-monospace, monospace;
+  font-weight: 600;
+  font-size: 17px;
   letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
 }
+/* Selection = the accent (one orange signal per screen). */
 .plate-card.selected, .plain-card.selected { outline: 3px solid var(--accent); outline-offset: 2px; }
 
 /* Action bar floats above the home indicator / gesture bar; cards fade out
-   under it while scrolling. */
+   under it while scrolling (transparent → FO Black scrim, functional). */
 #action-bar {
   flex: 0 0 auto;
   position: relative;
   display: flex;
-  gap: 10px;
-  padding-top: 12px;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  gap: 16px;
+  padding-top: 16px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 16px);
 }
 #action-bar::before {
   content: '';
@@ -380,36 +437,40 @@ h1 {
   background: linear-gradient(180deg, transparent, var(--bg));
   pointer-events: none;
 }
+/* Brand buttons (DESIGN_PRINCIPLES component patterns): primary = FO Orange
+   fill + FO Black text, no border; secondary = transparent, FO White border
+   and text. Labels uppercase, ≥44px targets. */
 .btn {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
-  height: 54px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 1rem;
+  height: 56px;
+  border-radius: 24px;
+  font-size: 15px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.08s ease;
+  box-sizing: border-box;
 }
 .btn:active { transform: scale(0.97); }
-.btn svg { width: 21px; height: 21px; flex: none; }
 .btn.primary {
   flex: 1;
-  background: linear-gradient(180deg, var(--accent), var(--accent-deep));
+  background: var(--accent);
   color: var(--on-accent);
-  box-shadow: 0 8px 22px -8px color-mix(in srgb, var(--accent) 55%, transparent);
+  border: none;
 }
-.btn.icon {
+.btn.primary:active { background: var(--accent-hover); }
+.btn.secondary {
   flex: none;
-  width: 54px;
-  border-radius: 18px;
-  color: var(--muted);
+  padding: 0 24px;
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--ink);
 }
 /* file inputs stay focusable (not [hidden]) so the labels show a keyboard ring */
 .btn input {

@@ -1,8 +1,13 @@
 import type { Box, ImageDataLike } from '../pipeline/types'
 
 const DISPLAY_MAX_WIDTH = 1000
-const UNSELECTED_COLOR = '#ffde59'
-const SELECTED_COLOR = '#1a73e8'
+/* Brand palette (FLEXOPTIX, closed): FO White for candidates, FO Orange for the
+   selected one — selection is the single accent. Each stroke sits on an FO
+   Black halo so boxes stay visible over white plates and bright scenes. */
+const UNSELECTED_COLOR = '#FFFFFF'
+const SELECTED_COLOR = '#FF6B00'
+const HALO_COLOR = '#00080A'
+const TAG_TEXT_COLOR = '#00080A'
 const CORNER_RADIUS = 8
 
 export interface PhotoView {
@@ -64,20 +69,23 @@ export function renderPhotoView(
       const { x, y, w, h } = displayRect(box)
       const isSelected = i === selected
       const color = isSelected ? SELECTED_COLOR : UNSELECTED_COLOR
-      ctx.strokeStyle = color
-      ctx.lineWidth = isSelected ? 4 : 3
       roundedRectPath(ctx, x, y, w, h, CORNER_RADIUS)
+      ctx.strokeStyle = HALO_COLOR
+      ctx.lineWidth = isSelected ? 6 : 5
+      ctx.stroke()
+      ctx.strokeStyle = color
+      ctx.lineWidth = isSelected ? 3.5 : 2.5
       ctx.stroke()
       if (showNumbers) {
         const label = String(i + 1)
-        ctx.font = 'bold 15px system-ui, sans-serif'
+        ctx.font = '600 15px Inter, system-ui, sans-serif'
         const tw = ctx.measureText(label).width
         const tagW = tw + 10
         const tagH = 20
         ctx.fillStyle = color
         roundedRectPath(ctx, x, y - tagH, tagW, tagH, 5)
         ctx.fill()
-        ctx.fillStyle = '#111'
+        ctx.fillStyle = TAG_TEXT_COLOR
         ctx.textBaseline = 'middle'
         ctx.fillText(label, x + 5, y - tagH / 2 + 1)
       }

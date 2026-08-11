@@ -23,3 +23,24 @@
   not grant redistribution rights.
 - **Used for:** `.plate-card` text (`src/web/ui.css`, `@font-face` block),
   self-hosted — no CDN, no external font request at runtime.
+
+## UI font — Inter Variable
+
+- **Files:** `src/web/fonts/inter-latin-wght-normal.woff2` (variable weights
+  100–900, latin subset), license text in `src/web/fonts/Inter-LICENSE-OFL.txt`
+- **What it is:** Inter by Rasmus Andersson — the mandatory typeface of the
+  FLEXOPTIX brand system (see `flexoptix-ai-brand-system/DESIGN.md`); the
+  subsetted woff2 is bundled with the brand package (Fontsource build).
+- **License:** SIL Open Font License 1.1 (permits bundling and self-hosted
+  redistribution; full text alongside the font file).
+- **Used for:** all UI chrome typography (`src/web/ui.css`, `@font-face`
+  block), self-hosted — no CDN, no external font request at runtime.
+
+## Brand assets — FLEXOPTIX
+
+- **Files:** inline eyecon SVG in `index.html`, `public/favicon.svg`,
+  `public/icon-192.png` / `public/icon-512.png` (rasterized from the official
+  `favicon-96.svg`)
+- **Source:** FLEXOPTIX brand package (`flexoptix-ai-brand-system/logos/`),
+  used verbatim / exported at size — never redrawn.
+- **License:** © FLEXOPTIX GmbH, internal use.
