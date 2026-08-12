@@ -17,6 +17,8 @@ export function initSettings() {
   const badge = $('#settings-badge')
   const notice = $('#notice')
   let noticeTimer: number | undefined
+  /** Set while the app has NO usable list: that notice must stay until the problem is fixed. */
+  let stickyMsg: string | null = null
 
   const refreshBadge = () => {
     badge.hidden = listState(getIndex() !== null, getCachedAt(), Date.now()) === 'ok'
@@ -28,24 +30,31 @@ export function initSettings() {
     info.classList.toggle('error', isError)
   }
 
-  const showNotice = (msg: string, isError: boolean) => {
+  const showNotice = (msg: string, isError: boolean, sticky = false) => {
     if (noticeTimer !== undefined) clearTimeout(noticeTimer)
+    noticeTimer = undefined
     notice.textContent = msg
     notice.classList.toggle('error', isError)
     notice.hidden = false
-    // errors linger longer; replacement clears the pending timer so notices never race
-    noticeTimer = window.setTimeout(() => (notice.hidden = true), isError ? 8000 : 4000)
+    // sticky (no usable list) never auto-hides; errors linger longer than successes
+    if (!sticky) noticeTimer = window.setTimeout(() => (notice.hidden = true), isError ? 8000 : 4000)
   }
-  notice.addEventListener('click', () => (notice.hidden = true))
+  notice.addEventListener('click', (e) => {
+    e.stopPropagation() // keep the tap-outside closer from immediately re-closing the panel
+    if (stickyMsg) setOpen(true) // no list — the notice is actionable, take the user to settings
+    else notice.hidden = true
+  })
 
   /**
    * Panel open → the outcome lands in the panel's status line (a notice would
-   * overlap the panel); panel closed → transient notice below the topbar.
+   * overlap the panel); panel closed → notice below the topbar. With no usable
+   * list the notice is sticky: it stays until a list actually loads.
    */
   const showOutcome = (outcome: RefreshOutcome) => {
     const isError = outcome.kind !== 'updated'
     const msg = refreshMessage(outcome, getCachedAt())
-    if (panel.hidden) showNotice(msg, isError)
+    stickyMsg = isError && getIndex() === null ? msg : null
+    if (panel.hidden) showNotice(msg, isError, stickyMsg !== null)
     else renderInfo(isError ? msg : undefined, isError)
     refreshBadge()
   }
@@ -57,6 +66,8 @@ export function initSettings() {
       notice.hidden = true // the user is acting on it — and the panel overlaps it
       urlInput.value = getUrl()
       renderInfo()
+    } else if (stickyMsg && getIndex() === null) {
+      showNotice(stickyMsg, true, true) // still no list — the reminder comes back
     }
   }
   btn.addEventListener('click', () => setOpen(Boolean(panel.hidden)))
