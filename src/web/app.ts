@@ -2,7 +2,7 @@ import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
 import { isCertain } from '../pipeline/certainty'
-import { lookupOwner, matrixToUrl } from '../registry/registry'
+import { lookupOwners } from '../registry/registry'
 import { loadWebSession } from './ort-web'
 import { fileToImageData } from './decode'
 import { renderPhotoView, type PhotoView } from './photo-view'
@@ -114,35 +114,26 @@ function euStarsSvg(): string {
 }
 
 /**
- * Owner row under the card: name + optional Element link. Re-rendered from
- * scratch on every call (initial render, after an in-place edit, after a list
- * update). lookupOwner normalizes both sides, so raw validation.plate and an
- * edited display-form value both work. No row when there is no list or no
- * match — the no-list case gets a single hint below the cards instead.
+ * Owner row under the card: the matched name(s) — a plate can be listed for
+ * several people, all are shown. Re-rendered from scratch on every call
+ * (initial render, after an in-place edit, after a list update).
+ * lookupOwners normalizes both sides, so raw validation.plate and an edited
+ * display-form value both work. No row when there is no list or no match —
+ * the no-list case gets a single hint below the cards instead.
+ * (Element messaging via the list's matrixId field is deferred.)
  */
 function updateOwnerRow(wrap: HTMLElement, text: string) {
   wrap.querySelector('.owner-row')?.remove()
   const registry = getIndex()
   if (!registry) return
-  const person = lookupOwner(registry, text)
-  if (!person) return
+  const owners = lookupOwners(registry, text)
+  if (owners.length === 0) return
   const row = document.createElement('div')
   row.className = 'owner-row'
   const name = document.createElement('span')
   name.className = 'owner-name'
-  name.textContent = person.name
+  name.textContent = owners.map((o) => o.name).join(' · ')
   row.appendChild(name)
-  if (person.matrixId) {
-    // matrix.to hands off to Element, or shows its own install/fallback page
-    // when the app is missing (message text can't be prefilled there).
-    const link = document.createElement('a')
-    link.className = 'owner-msg'
-    link.href = matrixToUrl(person.matrixId)
-    link.target = '_blank'
-    link.rel = 'noopener noreferrer'
-    link.textContent = 'Message via Element'
-    row.appendChild(link)
-  }
   wrap.appendChild(row)
 }
 

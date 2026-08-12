@@ -6,7 +6,7 @@ import {
   listState,
   plateKey,
   buildIndex,
-  lookupOwner,
+  lookupOwners,
   matrixToUrl,
   classifyFetchError,
   refreshMessage,
@@ -64,10 +64,10 @@ describe('plateKey / buildIndex', () => {
   })
   it('maps every plate of a person to the same Person reference', () => {
     const index = buildIndex(file)
-    expect(index.get('BNCR788')).toBe(index.get('TOLAB123'))
+    expect(index.get('BNCR788')?.[0]).toBe(index.get('TOLAB123')?.[0])
     expect(index.size).toBe(3)
   })
-  it('first person wins on duplicate plates', () => {
+  it('a plate listed for two people maps to both, in file order', () => {
     const dup: PlatesFile = {
       version: 1,
       people: [
@@ -75,7 +75,7 @@ describe('plateKey / buildIndex', () => {
         { name: 'Second', plates: ['B-AA-1'] },
       ],
     }
-    expect(buildIndex(dup).get('BAA1')?.name).toBe('First')
+    expect(buildIndex(dup).get('BAA1')?.map((p) => p.name)).toEqual(['First', 'Second'])
   })
   it('skips entries that normalize to nothing', () => {
     const junk: PlatesFile = { version: 1, people: [{ name: 'A', plates: ['???', ' '] }] }
@@ -86,19 +86,19 @@ describe('plateKey / buildIndex', () => {
   })
 })
 
-describe('lookupOwner', () => {
+describe('lookupOwners', () => {
   const index = buildIndex(file)
   it('hits from the compact validated plate (real umlaut)', () => {
-    expect(lookupOwner(index, 'TÖLAB123')?.name).toBe('Jane Doe')
+    expect(lookupOwners(index, 'TÖLAB123').map((p) => p.name)).toEqual(['Jane Doe'])
   })
   it('hits from an edited display-form value', () => {
-    expect(lookupOwner(index, 'TÖL AB 123')?.name).toBe('Jane Doe')
+    expect(lookupOwners(index, 'TÖL AB 123').map((p) => p.name)).toEqual(['Jane Doe'])
   })
   it('misses on unknown plate', () => {
-    expect(lookupOwner(index, 'X YZ 999')).toBeUndefined()
+    expect(lookupOwners(index, 'X YZ 999')).toEqual([])
   })
   it('no fuzzy match for a one-char-off plate', () => {
-    expect(lookupOwner(index, 'BN CR 789')).toBeUndefined()
+    expect(lookupOwners(index, 'BN CR 789')).toEqual([])
   })
 })
 

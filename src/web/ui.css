@@ -212,17 +212,15 @@ h1 {
 #list-info { margin: 0; font-size: 13px; color: var(--muted); }
 #list-info.error { color: var(--error); }
 
-/* Transient list-update notice (launch auto-update / force update while the
-   panel is closed). Neutral by default; .error reuses the #status badge
-   recipe. Tap to dismiss, auto-hides from settings.ts. */
+/* List-update notice (launch auto-update / force update while the panel is
+   closed). IN FLOW between topbar and content — a sticky no-list notice can
+   stay visible indefinitely, so it must never overlap content; the flex
+   shell simply makes room for it. Neutral by default; .error reuses the
+   #status badge recipe. Transient ones auto-hide from settings.ts. */
 #notice {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: max(8px, env(safe-area-inset-left, 0px));
-  right: max(8px, env(safe-area-inset-right, 0px));
-  z-index: 35;
+  flex: 0 0 auto;
   box-sizing: border-box;
-  margin: 0;
+  margin: 12px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
   padding: 10px 16px;
   border-radius: 12px;
   background: var(--surface-2);
@@ -248,20 +246,16 @@ h1 {
   padding-top: 16px;
 }
 
-/* Empty state: the photo panel fills all free space as a brand card (FO Black
-   80 surface, 1px FO Black 40 border, 40px card radius per DESIGN.md) and
-   centers the invitation block. Once a photo is decoded (canvas unhidden) it
-   becomes a bounded region and the plates panel takes over the remaining
-   height. */
+/* Empty state: a COMPACT invitation card (user feedback 2026-08-12 — the
+   full-height card read as a drop zone and dwarfed everything; photos come
+   from the buttons, not dragging). FO Black 80 surface, FO Black 40 border;
+   24px radius matching the photo card and buttons. Once a photo is decoded
+   (canvas unhidden) the :has() rules below take over as before. */
 #photo-panel {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 140px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  flex: 0 0 auto;
   overflow: hidden;
-  border-radius: 40px;
+  border-radius: 24px;
   background: var(--surface);
   border: 1px solid var(--line);
   box-sizing: border-box;
@@ -328,7 +322,7 @@ h1 {
 }
 
 /* Invitation block: editorial, left-aligned (brand: body copy is never
-   centered), sparse — the whitespace is intentional. */
+   centered), compact — the action bar is the dominant element, not this. */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -336,7 +330,7 @@ h1 {
   text-align: left;
   gap: 8px;
   width: 100%;
-  padding: 32px;
+  padding: 24px;
   box-sizing: border-box;
 }
 /* display: flex above beats the UA's [hidden] rule (author styles win over UA
@@ -352,12 +346,12 @@ h1 {
 }
 .empty-state h2 {
   margin: 0;
-  font-size: 24px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.01em;
   line-height: 1.15;
 }
-.empty-state p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 15px; max-width: 34ch; line-height: 1.6; }
+.empty-state p:not(.eyebrow) { margin: 0; color: var(--muted); font-size: 14px; max-width: 40ch; line-height: 1.6; }
 
 #plates-panel {
   flex: 0 0 auto;
@@ -411,9 +405,8 @@ h1 {
 }
 .candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
 
-/* Owner row (plates-list match): name + optional Element link under the card.
-   The link keeps a ~44px hit area via padding offset by negative margin so
-   the row stays visually compact. */
+/* Owner row (plates-list match): the matched name(s) under the card.
+   (Element message link deferred — reintroduce here when it lands.) */
 .owner-row {
   display: flex;
   align-items: center;
@@ -423,19 +416,6 @@ h1 {
   color: var(--muted);
 }
 .owner-row .owner-name { color: var(--ink); font-weight: 600; }
-.owner-msg {
-  margin-left: auto;
-  display: inline-flex;
-  align-items: center;
-  padding: 12px 0;
-  margin-top: -12px;
-  margin-bottom: -12px;
-  color: var(--accent);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-decoration: none;
-}
-.owner-msg:active { color: var(--accent-hover); }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.

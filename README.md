@@ -5,10 +5,11 @@ Photos never leave the device. Spec: docs/superpowers/specs/2026-07-15-plate-ext
 
 Stage 2 adds owner matching: the app can fetch a plates→owner list from a
 user-configured URL (settings gear), cache it in localStorage, and show the
-owner's name plus a "Message via Element" (matrix.to) link under a matched
-read. That fetch is the app's ONLY cross-origin request, it is optional
-(the app works fully without a list), and photos still never leave the
-device.
+owner name(s) under a matched read — a plate may be listed for several
+people, all are shown. That fetch is the app's ONLY cross-origin request,
+it is optional (the app works fully without a list), and photos still
+never leave the device. (Messaging the owner via Element is planned but
+not wired up yet; the schema's matrixId field is reserved for it.)
 
 ## Setup
 
@@ -89,9 +90,11 @@ the app's settings — the URL is never hardcoded here. Schema (fake data):
 }
 ```
 
-`version` must be 1; `matrixId` is optional (name-only row without it);
-plates may be written in any human format — the app normalizes (case,
-separators, umlaut folding) before exact matching. The app auto-refreshes
+`version` must be 1; `matrixId` is optional and currently unused (reserved
+for the later Element-messaging stage); plates may be written in any human
+format — the app normalizes (case, separators, umlaut folding) before
+exact matching, and a plate listed for several people matches all of them.
+The app auto-refreshes
 the list when it is missing or older than 7 days and has a force-update
 button in the settings panel; while the server is unreachable it keeps
 using the cached copy and says so.

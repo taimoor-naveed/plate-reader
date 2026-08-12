@@ -101,18 +101,22 @@ export function plateKey(s: string): string {
   return normalizePlateText(foldUmlauts(s.toUpperCase()))
 }
 
-export type PlateIndex = Map<string, Person>
+export type PlateIndex = Map<string, Person[]>
 
 /**
- * Entries normalizing to '' are skipped; on duplicate keys the FIRST person
- * in file order wins (deterministic — the list maintainer resolves clashes).
+ * Entries normalizing to '' are skipped. A plate listed for several people
+ * (rare, but one car can belong to multiple owners) maps to ALL of them,
+ * in file order.
  */
 export function buildIndex(file: PlatesFile): PlateIndex {
   const index: PlateIndex = new Map()
   for (const person of file.people) {
     for (const plate of person.plates) {
       const key = plateKey(plate)
-      if (key !== '' && !index.has(key)) index.set(key, person)
+      if (key === '') continue
+      const owners = index.get(key)
+      if (!owners) index.set(key, [person])
+      else if (!owners.includes(person)) owners.push(person)
     }
   }
   return index
@@ -120,12 +124,12 @@ export function buildIndex(file: PlatesFile): PlateIndex {
 
 /**
  * Exact match only, deliberately: the UI only shows zero-correction reads
- * (isCertain gate), and a fuzzy hit could message the wrong colleague.
+ * (isCertain gate), and a fuzzy hit would name the wrong colleague.
  * Accepts both validation.plate (compact, real umlauts) and user-edited
  * display text ("TÖL AB 123") — both converge on the same key.
  */
-export function lookupOwner(index: PlateIndex, text: string): Person | undefined {
-  return index.get(plateKey(text))
+export function lookupOwners(index: PlateIndex, text: string): Person[] {
+  return index.get(plateKey(text)) ?? []
 }
 
 /** matrix.to hands off to the Element app, or shows its own fallback page when Element isn't installed. */
