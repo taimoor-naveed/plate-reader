@@ -33,6 +33,24 @@
           <h1>Plate Reader</h1>
         </span>
         <span id="app-build"></span>
+        <button id="settings-btn" type="button" aria-label="Settings" aria-expanded="false">
+          <!-- self-drawn sliders icon (no icon-library dependency) -->
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+            <path d="M4 6h8M16 6h4M4 12h3M11 12h9M4 18h10M18 18h2" />
+            <circle cx="14" cy="6" r="2" />
+            <circle cx="9" cy="12" r="2" />
+            <circle cx="16" cy="18" r="2" />
+          </svg>
+          <span id="settings-badge" hidden aria-hidden="true">!</span>
+        </button>
+        <div id="settings" hidden>
+          <label for="plates-url">Plates list URL</label>
+          <input id="plates-url" type="url" inputmode="url" autocapitalize="off" autocorrect="off"
+                 spellcheck="false" placeholder="https://…/plates.json" />
+          <button id="plates-update" class="btn secondary" type="button">Update list now</button>
+          <p id="list-info"></p>
+        </div>
+        <p id="notice" role="status" hidden></p>
       </header>
       <main id="content">
         <section id="photo-panel">
@@ -48,6 +66,7 @@
           <p id="status" role="status"></p>
           <div id="cards"></div>
           <p id="no-plate" class="hint" hidden>No plate read with certainty — try again closer.</p>
+          <p id="no-list-hint" class="hint" hidden>No plate list loaded — can't look up the owner. Set the list URL in settings.</p>
         </section>
       </main>
       <div id="action-bar">

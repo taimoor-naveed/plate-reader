@@ -1,7 +1,14 @@
-# ANPR — plate extraction (stage 1)
+# ANPR — plate extraction (stage 1) + owner matching (stage 2)
 
 Reads German license plates from phone photos, fully on-device (PWA, ONNX in WebAssembly).
 Photos never leave the device. Spec: docs/superpowers/specs/2026-07-15-plate-extraction-design.md
+
+Stage 2 adds owner matching: the app can fetch a plates→owner list from a
+user-configured URL (settings gear), cache it in localStorage, and show the
+owner's name plus a "Message via Element" (matrix.to) link under a matched
+read. That fetch is the app's ONLY cross-origin request, it is optional
+(the app works fully without a list), and photos still never leave the
+device.
 
 ## Setup
 
@@ -67,10 +74,44 @@ For a team deployment instead of GitHub Pages: serve `dist/` (static
 files only) from any company-internal HTTPS host — no server-side logic
 required.
 
+## Plates list (owner matching)
+
+The list is served as a single `plates.json` from a URL the user enters in
+the app's settings — the URL is never hardcoded here. Schema (fake data):
+
+```json
+{
+  "version": 1,
+  "people": [
+    { "name": "Jane Doe", "matrixId": "@jane:matrix.example.com", "plates": ["BN CR 788", "TÖL AB 123"] },
+    { "name": "John NoChat", "plates": ["M X 1"] }
+  ]
+}
+```
+
+`version` must be 1; `matrixId` is optional (name-only row without it);
+plates may be written in any human format — the app normalizes (case,
+separators, umlaut folding) before exact matching. The app auto-refreshes
+the list when it is missing or older than 7 days and has a force-update
+button in the settings panel; while the server is unreachable it keeps
+using the cached copy and says so.
+
+Serving constraints: the response needs `Access-Control-Allow-Origin`
+(cross-origin fetch), and the server must be **HTTPS** — the deployed PWA
+is HTTPS and browsers block mixed content, so a plain `http://<lan-ip>`
+server is only reachable from the `npm run dev` page, not from the
+installed app. The reference dev server (plus its Tailscale-based HTTPS
+exposure) lives outside this repo, next to the real list.
+
 ## Privacy
 
 attachments/ (colleague car photos) and eval/expected.json (their plate numbers)
-are gitignored — never commit them.
+are gitignored — never commit them. The same applies to the plates→owner
+list: real names, plate numbers, Matrix IDs, and the list server's URL live
+only on the serving machine (outside this repo) and in the phone's
+localStorage — never in this repository. The iOS eviction caveat above
+extends to localStorage: an evicted PWA loses the saved URL and list
+together and returns to its first-launch state.
 
 ## Status (MVP, 2026-07-16)
 

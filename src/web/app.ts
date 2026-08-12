@@ -2,9 +2,11 @@ import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
 import { isCertain } from '../pipeline/certainty'
+import { lookupOwner, matrixToUrl } from '../registry/registry'
 import { loadWebSession } from './ort-web'
 import { fileToImageData } from './decode'
 import { renderPhotoView, type PhotoView } from './photo-view'
+import { getIndex, setOnUpdated } from './registry-client'
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector(sel) as T
 
@@ -111,6 +113,39 @@ function euStarsSvg(): string {
   return `<svg class="eu-stars" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="#ffcc00" font-size="6" text-anchor="middle">${stars}</g></svg>`
 }
 
+/**
+ * Owner row under the card: name + optional Element link. Re-rendered from
+ * scratch on every call (initial render, after an in-place edit, after a list
+ * update). lookupOwner normalizes both sides, so raw validation.plate and an
+ * edited display-form value both work. No row when there is no list or no
+ * match — the no-list case gets a single hint below the cards instead.
+ */
+function updateOwnerRow(wrap: HTMLElement, text: string) {
+  wrap.querySelector('.owner-row')?.remove()
+  const registry = getIndex()
+  if (!registry) return
+  const person = lookupOwner(registry, text)
+  if (!person) return
+  const row = document.createElement('div')
+  row.className = 'owner-row'
+  const name = document.createElement('span')
+  name.className = 'owner-name'
+  name.textContent = person.name
+  row.appendChild(name)
+  if (person.matrixId) {
+    // matrix.to hands off to Element, or shows its own install/fallback page
+    // when the app is missing (message text can't be prefilled there).
+    const link = document.createElement('a')
+    link.className = 'owner-msg'
+    link.href = matrixToUrl(person.matrixId)
+    link.target = '_blank'
+    link.rel = 'noopener noreferrer'
+    link.textContent = 'Message via Element'
+    row.appendChild(link)
+  }
+  wrap.appendChild(row)
+}
+
 function selectCandidate(index: number) {
   const c = lastResult?.candidates[index]
   if (!c) return
@@ -211,6 +246,10 @@ function renderCard(c: PlateCandidate, index: number, showIndex: boolean): HTMLD
     wrap.appendChild(meta)
   }
   wrap.appendChild(card)
+  // owner row is independent of the showIndex gate — single-plate reads (the
+  // common case) must still get it. Re-matched after every in-place edit.
+  updateOwnerRow(wrap, c.validation.plate)
+  input.addEventListener('blur', () => updateOwnerRow(wrap, input.value))
   return wrap
 }
 
@@ -229,6 +268,10 @@ export function renderResult(result: PipelineResult) {
   view?.setBoxes(result.candidates.map((c) => c.box))
 
   $('#no-plate').hidden = result.candidates.length > 0
+  // a plate was read but there is no list to match against — say so once,
+  // below the cards (stale-but-present lists still match; staleness is the
+  // gear badge's job, not this hint's)
+  $('#no-list-hint').hidden = !(result.candidates.length > 0 && getIndex() === null)
   const showIndex = result.candidates.length > 1
   result.candidates.forEach((c, i) => cards.appendChild(renderCard(c, i, showIndex)))
 
@@ -295,6 +338,7 @@ async function handleFile(file: File) {
   // reset stale state up front so a failure never shows a previous photo's read
   $('#cards').innerHTML = ''
   $('#no-plate').hidden = true
+  $('#no-list-hint').hidden = true
   lastResult = null
   setStatus('')
   try {
@@ -335,6 +379,19 @@ export function getSessions() {
 document.addEventListener('gesturestart', (e) => e.preventDefault())
 
 $('#app-build').textContent = __APP_BUILD__
+
+// A list refresh while results are on screen re-runs the owner lookup in
+// place from each card's CURRENT input value — re-running renderResult would
+// discard in-place edits and reset the selection.
+setOnUpdated(() => {
+  $('#no-list-hint').hidden = true
+  $('#cards')
+    .querySelectorAll<HTMLElement>('.candidate')
+    .forEach((wrap) => {
+      const input = wrap.querySelector<HTMLInputElement>('.plate-input')
+      if (input) updateOwnerRow(wrap, input.value)
+    })
+})
 
 for (const id of ['camera-input', 'gallery-input']) {
   $(`#${id}`).addEventListener('change', (e) => {

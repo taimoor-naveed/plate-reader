@@ -41,10 +41,10 @@ const PRECACHE_URLS = PRECACHE_MANIFEST.map((p) => BASE + p)
 // request shapes — some carry an `Origin` header, some don't. Vite's dev/
 // preview server sends `Vary: Origin` on every response, so the Cache API's
 // default (Vary-aware) matching treats those as different entries and misses
-// on the worker-issued fetches even though the URL was already cached. This
-// app makes no cross-origin requests, so Vary-based negotiation is never
-// meaningful here — ignoreVary makes matching purely URL/method-based, which
-// is what we actually want.
+// on the worker-issued fetches even though the URL was already cached. The
+// SW only ever caches same-origin requests (the fetch guard below), so
+// Vary-based negotiation is never meaningful here — ignoreVary makes matching
+// purely URL/method-based, which is what we actually want.
 const MATCH_OPTS = { ignoreVary: true }
 
 self.addEventListener('install', (event) => {
@@ -70,10 +70,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
-  // Same-origin GET only. This app makes no cross-origin requests at runtime
-  // (privacy constraint), and the SW must never start one on the app's
-  // behalf — anything else is passed through untouched (default browser
-  // handling applies).
+  // Same-origin GET only. The app's single cross-origin request — the
+  // user-configured plates-list fetch (src/web/registry-client.ts) — is
+  // deliberately excluded: its offline story is localStorage, not the SW
+  // cache, and the SW must never start or cache cross-origin requests on the
+  // app's behalf. Anything non-same-origin passes through untouched (default
+  // browser handling applies).
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return
 
   event.respondWith(

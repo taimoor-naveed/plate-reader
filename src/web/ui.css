@@ -11,7 +11,9 @@
   font-display: swap;
 }
 /* Inter Variable (latin subset), bundled from the brand package — self-hosted
-   so the PWA stays offline-capable and makes no cross-origin requests. */
+   so the PWA stays offline-capable and its ASSETS need no cross-origin
+   requests. (The app's single cross-origin fetch is the user-configured
+   plates list — see src/web/registry-client.ts.) */
 @font-face {
   font-family: 'Inter';
   src: url('./fonts/inter-latin-wght-normal.woff2') format('woff2');
@@ -93,6 +95,7 @@ h1, h2, h3, h4 { text-transform: uppercase; }
 
 #topbar {
   flex: 0 0 auto;
+  position: relative; /* anchors the settings dropdown + notice (absolute, zero layout shift) */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -107,6 +110,7 @@ h1, h2, h3, h4 { text-transform: uppercase; }
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex: 1; /* pushes build stamp + gear to the right edge */
 }
 #brand svg { width: 22px; height: 22px; flex: none; }
 h1 {
@@ -124,6 +128,117 @@ h1 {
   color: var(--faint);
   user-select: none;
 }
+/* Settings gear: 40px hit target, negative block margin so the topbar keeps
+   its height. Muted at rest — it must not compete with the capture flow. */
+#settings-btn {
+  flex: none;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  margin: -10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+#settings-btn:active,
+#settings-btn[aria-expanded='true'] { color: var(--ink); }
+#settings-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+#settings-btn svg { width: 22px; height: 22px; }
+/* List warning badge (no list / older than 7 days): orange as signal — the
+   closed palette has no yellow, and FO Orange is the sanctioned attention
+   color. Never blocks anything; details live in the panel's #list-info. */
+#settings-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 14px;
+  height: 14px;
+  border-radius: 7px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+#settings-badge[hidden] { display: none; }
+
+/* Settings dropdown: overlays below the topbar (absolute — zero layout shift
+   in the fixed-height shell). */
+#settings {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+#settings[hidden] { display: none; } /* display:flex beats the UA [hidden] rule */
+#settings label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+#plates-url {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 16px; /* ≥16px: iOS Safari zooms into smaller inputs on focus */
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  outline: none;
+}
+#plates-url:focus { border-color: var(--accent); }
+#settings .btn { height: 44px; border-radius: 16px; font-family: inherit; }
+.btn:disabled { opacity: 0.5; pointer-events: none; }
+#list-info { margin: 0; font-size: 13px; color: var(--muted); }
+#list-info.error { color: var(--error); }
+
+/* Transient list-update notice (launch auto-update / force update while the
+   panel is closed). Neutral by default; .error reuses the #status badge
+   recipe. Tap to dismiss, auto-hides from settings.ts. */
+#notice {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: max(8px, env(safe-area-inset-left, 0px));
+  right: max(8px, env(safe-area-inset-right, 0px));
+  z-index: 35;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+#notice.error {
+  background: rgba(239, 68, 68, 0.15); /* same sanctioned recipe as #status */
+  border-color: transparent;
+  color: var(--error);
+}
+#notice[hidden] { display: none; }
+
 #content {
   flex: 1 1 auto;
   min-height: 0;
@@ -295,6 +410,32 @@ h1 {
   box-sizing: border-box;
 }
 .candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
+
+/* Owner row (plates-list match): name + optional Element link under the card.
+   The link keeps a ~44px hit area via padding offset by negative margin so
+   the row stays visually compact. */
+.owner-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.owner-row .owner-name { color: var(--ink); font-weight: 600; }
+.owner-msg {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  padding: 12px 0;
+  margin-top: -12px;
+  margin-bottom: -12px;
+  color: var(--accent);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-decoration: none;
+}
+.owner-msg:active { color: var(--accent-hover); }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.
