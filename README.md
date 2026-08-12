@@ -95,10 +95,12 @@ for the later Element-messaging stage); plates may be written in any human
 format — the app normalizes (case, separators, umlaut folding) before
 matching, and the E/H registration suffix (electric/historic) is ignored on
 both sides, since list entries often omit it. A plate listed for several
-people matches all of them. On a match the card is re-rendered with the
-plate as written in the list — the list's spelling is authoritative, which
-also resolves ambiguous district splits (DA-T 295 vs D-AT 295). A read
-with no list entry shows a quiet "not in the plates list" note.
+people matches all of them. On a match the card is re-rendered using the
+list's segmentation (authoritative — resolves ambiguous district splits
+like DA-T 295 vs D-AT 295) while the E/H suffix is shown exactly as
+DETECTED: the badge is a fact about the photographed car, so a detected
+suffix stays visible and a list-only one is not painted on. A read with
+no list entry shows a quiet "not in the plates list" note.
 The app auto-refreshes
 the list when it is missing or older than 7 days and has a force-update
 button in the settings panel; while the server is unreachable it keeps

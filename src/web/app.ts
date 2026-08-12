@@ -2,7 +2,7 @@ import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
 import { isCertain } from '../pipeline/certainty'
-import { lookupMatch } from '../registry/registry'
+import { lookupMatch, matchedDisplay } from '../registry/registry'
 import { loadWebSession } from './ort-web'
 import { fileToImageData } from './decode'
 import { renderPhotoView, type PhotoView } from './photo-view'
@@ -135,7 +135,8 @@ function updateOwnerRow(wrap: HTMLElement, text: string) {
     const card = wrap.querySelector('.plate-card, .plain-card')
     const input = wrap.querySelector<HTMLInputElement>('.plate-input')
     if (card && input && !card.classList.contains('editing')) {
-      const display = match.plate.replace(/-/g, ' ') // plate anatomy renders groups, not dashes
+      // list's segmentation, detected E/H suffix — see matchedDisplay
+      const display = matchedDisplay(match.plate, text)
       input.value = display
       const layer = wrap.querySelector<HTMLElement>('.plate-static')
       if (layer) renderPlateStatic(layer, display)

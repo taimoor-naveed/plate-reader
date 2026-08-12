@@ -8,6 +8,7 @@ import {
   matchKey,
   buildIndex,
   lookupMatch,
+  matchedDisplay,
   matrixToUrl,
   classifyFetchError,
   refreshMessage,
@@ -135,6 +136,22 @@ describe('lookupMatch', () => {
   })
   it('no fuzzy match for a one-char-off plate', () => {
     expect(lookupMatch(index, 'BN CR 789')).toBeUndefined()
+  })
+})
+
+describe('matchedDisplay', () => {
+  it('uses the list segmentation for the shared part', () => {
+    expect(matchedDisplay('AB-CD 123', 'ABCD123')).toBe('AB CD 123')
+  })
+  it('keeps a DETECTED suffix even when the list omits it', () => {
+    expect(matchedDisplay('AB-CD 123', 'ABCD123E')).toBe('AB CD 123E')
+    expect(matchedDisplay('AB-CD 123', 'AB CD 123 H')).toBe('AB CD 123H')
+  })
+  it('does NOT paint on a list-only suffix the camera never saw', () => {
+    expect(matchedDisplay('AB-CD 660E', 'ABCD660')).toBe('AB CD 660')
+  })
+  it('suffix on both sides shows once, attached to the digits', () => {
+    expect(matchedDisplay('F-XX 285 E', 'FXX285E')).toBe('F XX 285E')
   })
 })
 

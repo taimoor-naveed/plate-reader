@@ -151,6 +151,19 @@ export function lookupMatch(index: PlateIndex, text: string): PlateMatch | undef
   return index.get(matchKey(text))
 }
 
+/**
+ * Display form for a matched card: the LIST's segmentation (authoritative —
+ * resolves DA-T vs D-AT), but the E/H suffix exactly AS DETECTED — the badge
+ * is a fact about the photographed car, not about the list entry, so a
+ * detected suffix stays visible and a list-only suffix is not painted on.
+ * Dashes become spaces (the plate anatomy renders groups, not separators).
+ */
+export function matchedDisplay(listPlate: string, detected: string): string {
+  const base = listPlate.replace(/-/g, ' ').replace(/(\d)\s*[EH]$/, '$1')
+  const suffix = plateKey(detected).match(/\d([EH])$/)?.[1] ?? ''
+  return base + suffix
+}
+
 /** matrix.to hands off to the Element app, or shows its own fallback page when Element isn't installed. */
 export function matrixToUrl(matrixId: string): string {
   return `https://matrix.to/#/${encodeURIComponent(matrixId)}`

@@ -411,7 +411,10 @@ h1 {
    multi-owner names). A miss is the opposite of an answer: caption-tier
    treatment (eyebrow recipe — small, uppercase, letterspaced, muted) so it
    informs without shouting. (Element message link deferred.) */
-.owner-row { padding: 2px 2px 0; }
+/* Centered under the plate (user decision — the name is a display element
+   paired with the centered plate card, not body copy), with clear air above
+   it: 8px margin on top of the candidate's 8px flex gap. */
+.owner-row { margin-top: 8px; padding: 0 2px; text-align: center; }
 .owner-row .owner-name {
   display: block;
   font-size: clamp(24px, 8.5vw, 40px);
