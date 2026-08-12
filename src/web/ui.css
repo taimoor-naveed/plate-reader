@@ -405,17 +405,32 @@ h1 {
 }
 .candidate.selected .mchip { background: var(--accent); color: var(--on-accent); }
 
-/* Owner row (plates-list match): the matched name(s) under the card.
-   (Element message link deferred — reintroduce here when it lands.) */
-.owner-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 2px;
-  font-size: 13px;
+/* Owner row (plates-list match) under the card. The matched NAME is the
+   answer this app exists to produce, so it gets display-scale type — nearly
+   plate-sized, clamped to the shell width (vw-driven, wraps for long or
+   multi-owner names). A miss is the opposite of an answer: caption-tier
+   treatment (eyebrow recipe — small, uppercase, letterspaced, muted) so it
+   informs without shouting. (Element message link deferred.) */
+.owner-row { padding: 2px 2px 0; }
+.owner-row .owner-name {
+  display: block;
+  font-size: clamp(24px, 8.5vw, 40px);
+  line-height: 1.1;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.owner-row .owner-unknown {
+  display: block;
+  padding: 4px 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
   color: var(--muted);
 }
-.owner-row .owner-name { color: var(--ink); font-weight: 600; }
 
 /* German plate card, real-plate anatomy (user reference): 520:110, narrow blue EU
    band (real plates: ~42mm of 520), then district | seal stack | letters digits.

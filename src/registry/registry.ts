@@ -101,35 +101,54 @@ export function plateKey(s: string): string {
   return normalizePlateText(foldUmlauts(s.toUpperCase()))
 }
 
-export type PlateIndex = Map<string, Person[]>
+export interface PlateMatch {
+  /** the plate as written in the list — the authoritative display form */
+  plate: string
+  owners: Person[]
+}
+
+export type PlateIndex = Map<string, PlateMatch>
+
+/**
+ * Match key: plateKey minus a trailing E/H registration suffix
+ * (electric/historic). OCR and the hand-maintained list disagree on the
+ * suffix often enough that it must not gate a match; the digit guard keeps
+ * genuine plate letters intact (only a suffix AFTER the digits is dropped).
+ */
+export function matchKey(s: string): string {
+  return plateKey(s).replace(/(\d)[EH]$/, '$1')
+}
 
 /**
  * Entries normalizing to '' are skipped. A plate listed for several people
  * (rare, but one car can belong to multiple owners) maps to ALL of them,
- * in file order.
+ * in file order; the first entry's spelling wins as the display form.
  */
 export function buildIndex(file: PlatesFile): PlateIndex {
   const index: PlateIndex = new Map()
   for (const person of file.people) {
     for (const plate of person.plates) {
-      const key = plateKey(plate)
+      const key = matchKey(plate)
       if (key === '') continue
-      const owners = index.get(key)
-      if (!owners) index.set(key, [person])
-      else if (!owners.includes(person)) owners.push(person)
+      const entry = index.get(key)
+      if (!entry) index.set(key, { plate, owners: [person] })
+      else if (!entry.owners.includes(person)) entry.owners.push(person)
     }
   }
   return index
 }
 
 /**
- * Exact match only, deliberately: the UI only shows zero-correction reads
+ * Exact match (modulo separators, umlaut folding, and the E/H suffix) —
+ * deliberately no fuzzy matching: the UI only shows zero-correction reads
  * (isCertain gate), and a fuzzy hit would name the wrong colleague.
  * Accepts both validation.plate (compact, real umlauts) and user-edited
- * display text ("TÖL AB 123") — both converge on the same key.
+ * display text ("TÖL AB 123") — both converge on the same key. The returned
+ * match carries the list's own spelling, which the UI uses to render the
+ * authoritative segmentation (resolves DA-T vs D-AT ambiguity).
  */
-export function lookupOwners(index: PlateIndex, text: string): Person[] {
-  return index.get(plateKey(text)) ?? []
+export function lookupMatch(index: PlateIndex, text: string): PlateMatch | undefined {
+  return index.get(matchKey(text))
 }
 
 /** matrix.to hands off to the Element app, or shows its own fallback page when Element isn't installed. */

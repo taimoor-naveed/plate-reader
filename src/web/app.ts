@@ -2,7 +2,7 @@ import Panzoom, { type PanzoomObject } from '@panzoom/panzoom'
 import type { ImageDataLike, PlateCandidate } from '../pipeline/types'
 import { extractPlates, type PipelineSessions, type PipelineResult } from '../pipeline/pipeline'
 import { isCertain } from '../pipeline/certainty'
-import { lookupOwners } from '../registry/registry'
+import { lookupMatch } from '../registry/registry'
 import { loadWebSession } from './ort-web'
 import { fileToImageData } from './decode'
 import { renderPhotoView, type PhotoView } from './photo-view'
@@ -114,26 +114,42 @@ function euStarsSvg(): string {
 }
 
 /**
- * Owner row under the card: the matched name(s) — a plate can be listed for
- * several people, all are shown. Re-rendered from scratch on every call
- * (initial render, after an in-place edit, after a list update).
- * lookupOwners normalizes both sides, so raw validation.plate and an edited
- * display-form value both work. No row when there is no list or no match —
- * the no-list case gets a single hint below the cards instead.
+ * Owner row under the card. Re-rendered from scratch on every call (initial
+ * render, after an in-place edit, after a list update). On a match: the
+ * owner name(s) in display-size type, and the card face is rewritten with
+ * the plate AS WRITTEN IN THE LIST — the list's segmentation is
+ * authoritative, so an ambiguous read (DA-T 295 vs D-AT 295) snaps to the
+ * correct form. On a miss (with a list loaded): a quiet "not in the list"
+ * note — informative without competing with real matches. No row at all
+ * when there is no list (the no-list hint below the cards covers that).
  * (Element messaging via the list's matrixId field is deferred.)
  */
 function updateOwnerRow(wrap: HTMLElement, text: string) {
   wrap.querySelector('.owner-row')?.remove()
   const registry = getIndex()
   if (!registry) return
-  const owners = lookupOwners(registry, text)
-  if (owners.length === 0) return
+  const match = lookupMatch(registry, text)
   const row = document.createElement('div')
   row.className = 'owner-row'
-  const name = document.createElement('span')
-  name.className = 'owner-name'
-  name.textContent = owners.map((o) => o.name).join(' · ')
-  row.appendChild(name)
+  if (match) {
+    const card = wrap.querySelector('.plate-card, .plain-card')
+    const input = wrap.querySelector<HTMLInputElement>('.plate-input')
+    if (card && input && !card.classList.contains('editing')) {
+      const display = match.plate.replace(/-/g, ' ') // plate anatomy renders groups, not dashes
+      input.value = display
+      const layer = wrap.querySelector<HTMLElement>('.plate-static')
+      if (layer) renderPlateStatic(layer, display)
+    }
+    const name = document.createElement('span')
+    name.className = 'owner-name'
+    name.textContent = match.owners.map((o) => o.name).join(' · ')
+    row.appendChild(name)
+  } else {
+    const unknown = document.createElement('span')
+    unknown.className = 'owner-unknown'
+    unknown.textContent = 'Not in the plates list'
+    row.appendChild(unknown)
+  }
   wrap.appendChild(row)
 }
 

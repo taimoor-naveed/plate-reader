@@ -5,8 +5,9 @@ import {
   isStale,
   listState,
   plateKey,
+  matchKey,
   buildIndex,
-  lookupOwners,
+  lookupMatch,
   matrixToUrl,
   classifyFetchError,
   refreshMessage,
@@ -52,7 +53,7 @@ describe('parsePlatesFile', () => {
   })
 })
 
-describe('plateKey / buildIndex', () => {
+describe('plateKey / matchKey / buildIndex', () => {
   it('folds umlauts BEFORE stripping (TÖL AB 123 -> TOLAB123, not TLAB123)', () => {
     expect(plateKey('TÖL AB 123')).toBe('TOLAB123')
   })
@@ -62,10 +63,23 @@ describe('plateKey / buildIndex', () => {
   it('strips spaces, dashes, dots', () => {
     expect(plateKey('bn-cr.788')).toBe('BNCR788')
   })
+  it('matchKey drops a trailing E/H suffix after digits (electric/historic)', () => {
+    expect(matchKey('AB-CD 660E')).toBe('ABCD660')
+    expect(matchKey('XY-Z 7507H')).toBe('XYZ7507')
+    expect(matchKey('F-XX 285 E')).toBe('FXX285')
+  })
+  it('matchKey keeps genuine plate letters — only a suffix AFTER digits is dropped', () => {
+    expect(matchKey('DA-HE 100')).toBe('DAHE100')
+    expect(matchKey('B-E 7')).toBe('BE7')
+  })
   it('maps every plate of a person to the same Person reference', () => {
     const index = buildIndex(file)
-    expect(index.get('BNCR788')?.[0]).toBe(index.get('TOLAB123')?.[0])
+    expect(index.get('BNCR788')?.owners[0]).toBe(index.get('TOLAB123')?.owners[0])
     expect(index.size).toBe(3)
+  })
+  it('keeps the list spelling as the display form', () => {
+    const index = buildIndex(file)
+    expect(index.get('TOLAB123')?.plate).toBe('TÖL AB 123')
   })
   it('a plate listed for two people maps to both, in file order', () => {
     const dup: PlatesFile = {
@@ -75,7 +89,19 @@ describe('plateKey / buildIndex', () => {
         { name: 'Second', plates: ['B-AA-1'] },
       ],
     }
-    expect(buildIndex(dup).get('BAA1')?.map((p) => p.name)).toEqual(['First', 'Second'])
+    expect(buildIndex(dup).get('BAA1')?.owners.map((p) => p.name)).toEqual(['First', 'Second'])
+  })
+  it('suffixed and unsuffixed variants of one plate merge (first spelling wins)', () => {
+    const merged: PlatesFile = {
+      version: 1,
+      people: [
+        { name: 'First', plates: ['AB-CD 1982'] },
+        { name: 'Second', plates: ['AB-CD 1982H'] },
+      ],
+    }
+    const entry = buildIndex(merged).get('ABCD1982')
+    expect(entry?.owners.map((p) => p.name)).toEqual(['First', 'Second'])
+    expect(entry?.plate).toBe('AB-CD 1982')
   })
   it('skips entries that normalize to nothing', () => {
     const junk: PlatesFile = { version: 1, people: [{ name: 'A', plates: ['???', ' '] }] }
@@ -86,19 +112,29 @@ describe('plateKey / buildIndex', () => {
   })
 })
 
-describe('lookupOwners', () => {
+describe('lookupMatch', () => {
   const index = buildIndex(file)
   it('hits from the compact validated plate (real umlaut)', () => {
-    expect(lookupOwners(index, 'TÖLAB123').map((p) => p.name)).toEqual(['Jane Doe'])
+    expect(lookupMatch(index, 'TÖLAB123')?.owners.map((p) => p.name)).toEqual(['Jane Doe'])
   })
   it('hits from an edited display-form value', () => {
-    expect(lookupOwners(index, 'TÖL AB 123').map((p) => p.name)).toEqual(['Jane Doe'])
+    expect(lookupMatch(index, 'TÖL AB 123')?.owners.map((p) => p.name)).toEqual(['Jane Doe'])
+  })
+  it('returns the list spelling for display', () => {
+    expect(lookupMatch(index, 'BNCR788')?.plate).toBe('BN CR 788')
+  })
+  it('read WITH E suffix matches a list entry WITHOUT it', () => {
+    expect(lookupMatch(index, 'MX1E')?.owners.map((p) => p.name)).toEqual(['John NoChat'])
+  })
+  it('read WITHOUT suffix matches a suffixed list entry', () => {
+    const suffixed = buildIndex({ version: 1, people: [{ name: 'A', plates: ['AB-CD 660E'] }] })
+    expect(lookupMatch(suffixed, 'ABCD660')?.plate).toBe('AB-CD 660E')
   })
   it('misses on unknown plate', () => {
-    expect(lookupOwners(index, 'X YZ 999')).toEqual([])
+    expect(lookupMatch(index, 'X YZ 999')).toBeUndefined()
   })
   it('no fuzzy match for a one-char-off plate', () => {
-    expect(lookupOwners(index, 'BN CR 789')).toEqual([])
+    expect(lookupMatch(index, 'BN CR 789')).toBeUndefined()
   })
 })
 
