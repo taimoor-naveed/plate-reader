@@ -70,13 +70,16 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request
-  // Same-origin GET only. The app's single cross-origin request — the
-  // user-configured plates-list fetch (src/web/registry-client.ts) — is
-  // deliberately excluded: its offline story is localStorage, not the SW
-  // cache, and the SW must never start or cache cross-origin requests on the
-  // app's behalf. Anything non-same-origin passes through untouched (default
-  // browser handling applies).
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return
+  // Same-origin GET only. The user-configured plates-list fetch
+  // (src/web/registry-client.ts) is deliberately excluded: its offline story
+  // is localStorage, not the SW cache, and the SW must never start or cache
+  // cross-origin requests on the app's behalf. Cross-origin requests pass
+  // through untouched — and so does any request marked cache:'no-store'
+  // (the plates fetch always is): if the list is ever served from the SAME
+  // origin as the app (the team-deployment option in the README), cache-first
+  // handling here would freeze it at its first fetch forever while every
+  // refresh reported success.
+  if (req.method !== 'GET' || req.cache === 'no-store' || new URL(req.url).origin !== self.location.origin) return
 
   event.respondWith(
     caches.match(req, MATCH_OPTS).then((cached) => {

@@ -123,11 +123,21 @@ localStorage — never in this repository. The iOS eviction caveat above
 extends to localStorage: an evicted PWA loses the saved URL and list
 together and returns to its first-launch state.
 
-## Status (MVP, 2026-07-16)
+## Status
 
-Verified on the user's phone over LAN (dev server): model preload, live camera
-reads, multi-plate photos, tap-to-select, in-place editing. On-device latency
-well within budget. UI iterated live to the minimal app-shell design
-(photo + rectangles, authentic plate cards, no page scroll). Remaining known
-misses (4/34 labeled plates) are documented in docs/eval-results.md; retake
-is the designed recourse.
+**Stage 1 (MVP, 2026-07-16):** verified on the user's phone over LAN (dev
+server): model preload, live camera reads, multi-plate photos,
+tap-to-select, in-place editing. On-device latency well within budget. UI
+iterated live to the minimal app-shell design (photo + rectangles,
+authentic plate cards, no page scroll). Remaining known misses (4/34
+labeled plates) are documented in docs/eval-results.md; retake is the
+designed recourse.
+
+**Stage 2 (owner matching, 2026-08-17):** verified end-to-end on the
+user's phone against the deployed PWA — list fetched over HTTPS (Tailscale
+serve during testing), cached, auto-refresh + force update + staleness
+badge, owner names on matched cards, suffix-lenient matching with
+list-authoritative display. The list server currently runs on demand on
+the maintainer's machine; moving it to company infrastructure, fetching
+straight from the Confluence API, and the Element message button are the
+open stage-3 items.

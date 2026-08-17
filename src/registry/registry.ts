@@ -101,10 +101,29 @@ export function plateKey(s: string): string {
   return normalizePlateText(foldUmlauts(s.toUpperCase()))
 }
 
+/**
+ * Canonical human spelling: case and separators normalized, GROUPING kept —
+ * unlike plateKey this preserves where the district/letters split sits, so
+ * "DA-T 295" and "D-AT 295" stay distinguishable.
+ */
+function displayForm(s: string): string {
+  return s
+    .toUpperCase()
+    .replace(/[^A-ZÄÖÜ0-9]+/g, ' ')
+    .trim()
+}
+
 export interface PlateMatch {
   /** the plate as written in the list — the authoritative display form */
   plate: string
   owners: Person[]
+  /**
+   * Two list entries collide on the match key but are spelled as genuinely
+   * different registrations (DA-T 295 vs D-AT 295, or suffix-only variants).
+   * All owners are still shown, but the card face must NOT be repainted —
+   * we cannot know which spelling the photographed car carries.
+   */
+  contested?: boolean
 }
 
 export type PlateIndex = Map<string, PlateMatch>
@@ -131,8 +150,15 @@ export function buildIndex(file: PlatesFile): PlateIndex {
       const key = matchKey(plate)
       if (key === '') continue
       const entry = index.get(key)
-      if (!entry) index.set(key, { plate, owners: [person] })
-      else if (!entry.owners.includes(person)) entry.owners.push(person)
+      if (!entry) {
+        index.set(key, { plate, owners: [person] })
+      } else {
+        if (!entry.owners.includes(person)) entry.owners.push(person)
+        // same match key but a different spelling (segmentation or suffix)
+        // -> genuinely distinct registrations, mark contested. plateKey
+        // can't detect this: it strips exactly the separators that differ.
+        if (displayForm(plate) !== displayForm(entry.plate)) entry.contested = true
+      }
     }
   }
   return index
@@ -159,7 +185,9 @@ export function lookupMatch(index: PlateIndex, text: string): PlateMatch | undef
  * Dashes become spaces (the plate anatomy renders groups, not separators).
  */
 export function matchedDisplay(listPlate: string, detected: string): string {
-  const base = listPlate.replace(/-/g, ' ').replace(/(\d)\s*[EH]$/, '$1')
+  // the list is hand-maintained: normalize case/separators before composing,
+  // or a lax spelling ("ab-cd 660e") corrupts the card face
+  const base = displayForm(listPlate).replace(/(\d)\s*[EH]$/, '$1')
   const suffix = plateKey(detected).match(/\d([EH])$/)?.[1] ?? ''
   return base + suffix
 }
@@ -207,6 +235,8 @@ export function listInfo(plateCount: number | undefined, fetchedAt: number | und
   if (plateCount === undefined || fetchedAt === undefined) return 'No list loaded yet.'
   const base = `${plateCount} plate${plateCount === 1 ? '' : 's'} · updated ${formatDate(fetchedAt)}`
   if (!isStale(fetchedAt, now)) return base
-  const days = Math.floor((now - fetchedAt) / (24 * 60 * 60 * 1000))
+  // round, not floor: a DST transition inside the window makes floor
+  // undercount by one calendar day vs. the two dates shown side by side
+  const days = Math.round((now - fetchedAt) / (24 * 60 * 60 * 1000))
   return `${base} — ${days} days old, update recommended.`
 }

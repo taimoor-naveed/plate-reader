@@ -103,6 +103,27 @@ describe('plateKey / matchKey / buildIndex', () => {
     const entry = buildIndex(merged).get('ABCD1982')
     expect(entry?.owners.map((p) => p.name)).toEqual(['First', 'Second'])
     expect(entry?.plate).toBe('AB-CD 1982')
+    expect(entry?.contested).toBe(true) // distinct registrations — never repaint the face
+  })
+  it('colliding segmentations (DA-T vs D-AT) are contested; same spelling is not', () => {
+    const seg: PlatesFile = {
+      version: 1,
+      people: [
+        { name: 'Anna', plates: ['DA-T 295'] },
+        { name: 'Ben', plates: ['D-AT 295'] },
+      ],
+    }
+    const entry = buildIndex(seg).get('DAT295')
+    expect(entry?.contested).toBe(true)
+    expect(entry?.owners.map((p) => p.name)).toEqual(['Anna', 'Ben'])
+    const same: PlatesFile = {
+      version: 1,
+      people: [
+        { name: 'A', plates: ['B AA 1'] },
+        { name: 'B', plates: ['B-AA-1'] },
+      ],
+    }
+    expect(buildIndex(same).get('BAA1')?.contested).toBeUndefined()
   })
   it('skips entries that normalize to nothing', () => {
     const junk: PlatesFile = { version: 1, people: [{ name: 'A', plates: ['???', ' '] }] }
@@ -152,6 +173,11 @@ describe('matchedDisplay', () => {
   })
   it('suffix on both sides shows once, attached to the digits', () => {
     expect(matchedDisplay('F-XX 285 E', 'FXX285E')).toBe('F XX 285E')
+  })
+  it('normalizes lax list spellings before composing (case, separators, stray space)', () => {
+    expect(matchedDisplay('ab-cd 660e', 'ABCD660E')).toBe('AB CD 660E')
+    expect(matchedDisplay('AB.CD.123', 'ABCD123')).toBe('AB CD 123')
+    expect(matchedDisplay('AB-CD 660E ', 'ABCD660')).toBe('AB CD 660')
   })
 })
 

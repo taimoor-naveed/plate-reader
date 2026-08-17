@@ -51,7 +51,11 @@
           <p id="list-info"></p>
         </div>
       </header>
-      <p id="notice" role="status" hidden></p>
+      <!-- shown iff non-empty (#notice:empty hides it) — populating a
+           display:none live region is never announced by screen readers.
+           tabindex: the sticky variant is tappable (opens settings), so it
+           must be reachable by keyboard too. -->
+      <p id="notice" role="status" tabindex="0"></p>
       <main id="content">
         <section id="photo-panel">
           <div id="busy" hidden aria-label="Working"><span class="spinner"></span></div>
@@ -66,7 +70,7 @@
           <p id="status" role="status"></p>
           <div id="cards"></div>
           <p id="no-plate" class="hint" hidden>No plate read with certainty — try again closer.</p>
-          <p id="no-list-hint" class="hint" hidden>No plate list loaded — can't look up the owner. Set the list URL in settings.</p>
+          <p id="no-list-hint" class="hint" hidden>No plate list loaded — can't look up the owner. Open settings (top right) to load it.</p>
         </section>
       </main>
       <div id="action-bar">

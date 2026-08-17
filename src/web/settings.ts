@@ -30,19 +30,30 @@ export function initSettings() {
     info.classList.toggle('error', isError)
   }
 
+  // Shown/hidden via textContent + the #notice:empty CSS rule (same pattern
+  // as #status): a role=status region that is populated while display:none
+  // is never announced by screen readers — text changes in a rendered,
+  // empty region are.
+  const hideNotice = () => (notice.textContent = '')
   const showNotice = (msg: string, isError: boolean, sticky = false) => {
     if (noticeTimer !== undefined) clearTimeout(noticeTimer)
     noticeTimer = undefined
     notice.textContent = msg
     notice.classList.toggle('error', isError)
-    notice.hidden = false
     // sticky (no usable list) never auto-hides; errors linger longer than successes
-    if (!sticky) noticeTimer = window.setTimeout(() => (notice.hidden = true), isError ? 8000 : 4000)
+    if (!sticky) noticeTimer = window.setTimeout(hideNotice, isError ? 8000 : 4000)
   }
-  notice.addEventListener('click', (e) => {
+  const activateNotice = (e: Event) => {
     e.stopPropagation() // keep the tap-outside closer from immediately re-closing the panel
     if (stickyMsg) setOpen(true) // no list — the notice is actionable, take the user to settings
-    else notice.hidden = true
+    else hideNotice()
+  }
+  notice.addEventListener('click', activateNotice)
+  notice.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      activateNotice(e)
+    }
   })
 
   /**
@@ -63,11 +74,16 @@ export function initSettings() {
     panel.hidden = !open
     btn.setAttribute('aria-expanded', String(open))
     if (open) {
-      notice.hidden = true // the user is acting on it — and the panel overlaps it
+      hideNotice() // the user is acting on it — and the panel overlaps it
       urlInput.value = getUrl()
       renderInfo()
-    } else if (stickyMsg && getIndex() === null) {
-      showNotice(stickyMsg, true, true) // still no list — the reminder comes back
+    } else if (getIndex() === null) {
+      // Closing the panel without a list: if a URL is configured (maybe just
+      // pasted), try it right away — a stale "set the URL" replay after the
+      // user set one would point at the wrong fix. Otherwise the sticky
+      // reminder comes back.
+      if (getUrl()) void refreshRegistry().then(showOutcome)
+      else if (stickyMsg) showNotice(stickyMsg, true, true)
     }
   }
   btn.addEventListener('click', () => setOpen(Boolean(panel.hidden)))
@@ -94,7 +110,10 @@ export function initSettings() {
     return true
   }
   urlInput.addEventListener('change', () => {
-    if (applyUrl()) renderInfo()
+    if (applyUrl()) {
+      renderInfo()
+      refreshBadge() // clearing the URL purges the cached list -> badge returns
+    }
   })
 
   updateBtn.addEventListener('click', () => {
@@ -110,4 +129,14 @@ export function initSettings() {
   refreshBadge()
   const auto = maybeAutoRefresh()
   if (auto) void auto.then(showOutcome)
+
+  // A long-lived PWA session (resumed from the app switcher for weeks, never
+  // cold-launched) would otherwise never re-evaluate the 7-day threshold —
+  // same resume hook the service-worker registration uses for updates.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return
+    refreshBadge()
+    const p = maybeAutoRefresh()
+    if (p) void p.then(showOutcome)
+  })
 }

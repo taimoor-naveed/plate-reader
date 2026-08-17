@@ -2,9 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    # Temporarily deploying from the feature branch for on-phone testing;
-    # restore to [main] when plates-list merges.
-    branches: [plates-list]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

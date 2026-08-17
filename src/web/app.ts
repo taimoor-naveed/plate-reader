@@ -134,7 +134,10 @@ function updateOwnerRow(wrap: HTMLElement, text: string) {
   if (match) {
     const card = wrap.querySelector('.plate-card, .plain-card')
     const input = wrap.querySelector<HTMLInputElement>('.plate-input')
-    if (card && input && !card.classList.contains('editing')) {
+    // contested: two list entries collide on the match key but spell
+    // genuinely different registrations — we can't know which one the
+    // photographed car carries, so never repaint the face for those
+    if (card && input && !card.classList.contains('editing') && !match.contested) {
       // list's segmentation, detected E/H suffix — see matchedDisplay
       const display = matchedDisplay(match.plate, text)
       input.value = display
@@ -392,10 +395,15 @@ $('#app-build').textContent = __APP_BUILD__
 // place from each card's CURRENT input value — re-running renderResult would
 // discard in-place edits and reset the selection.
 setOnUpdated(() => {
-  $('#no-list-hint').hidden = true
+  // fires on refresh AND on list purge (URL cleared): the hint's invariant
+  // is "cards on screen but no list to match against"
+  $('#no-list-hint').hidden = !(getIndex() === null && $('#cards').children.length > 0)
   $('#cards')
     .querySelectorAll<HTMLElement>('.candidate')
     .forEach((wrap) => {
+      // a refresh landing mid-edit would evaluate a half-typed plate and
+      // flip the row under the user's fingers — blur re-runs it anyway
+      if (wrap.querySelector('.editing')) return
       const input = wrap.querySelector<HTMLInputElement>('.plate-input')
       if (input) updateOwnerRow(wrap, input.value)
     })

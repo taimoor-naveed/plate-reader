@@ -6,6 +6,7 @@ import {
   parsePlatesFile,
   type CachedRegistry,
   type PlateIndex,
+  type PlatesFile,
   type RefreshOutcome,
 } from '../registry/registry'
 
@@ -45,7 +46,13 @@ export function getCachedAt(): number | undefined {
   return cachedAt
 }
 
+// In-memory fallback so a blocked localStorage write (quota, private mode)
+// degrades to session-only behavior instead of "No plates list configured"
+// while the URL sits visibly in the input.
+let urlMem: string | null = null
+
 export function getUrl(): string {
+  if (urlMem !== null) return urlMem
   try {
     return localStorage.getItem(URL_KEY) ?? ''
   } catch {
@@ -55,11 +62,24 @@ export function getUrl(): string {
 
 export function setUrl(value: string) {
   const trimmed = value.trim()
+  urlMem = trimmed
   try {
     if (trimmed === '') localStorage.removeItem(URL_KEY)
     else localStorage.setItem(URL_KEY, trimmed)
   } catch (e) {
     console.warn('could not persist plates URL', e)
+  }
+  // Clearing the URL means "remove the list": names and plates must not
+  // keep being served from cache after the user withdrew the source.
+  if (trimmed === '') {
+    index = null
+    cachedAt = undefined
+    try {
+      localStorage.removeItem(CACHE_KEY)
+    } catch {
+      /* nothing to remove */
+    }
+    onUpdated?.()
   }
 }
 
@@ -68,24 +88,37 @@ export function setOnUpdated(cb: () => void) {
   onUpdated = cb
 }
 
-async function doRefresh(): Promise<RefreshOutcome> {
-  const url = getUrl()
-  if (!url) return { kind: 'no-url' }
+/** One fetch of one URL; returns the outcome plus the parsed file on success. */
+async function fetchList(url: string): Promise<{ outcome: RefreshOutcome; file?: PlatesFile }> {
   let res: Response
   try {
     res = await fetch(url, { mode: 'cors', cache: 'no-store', signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) })
   } catch (e) {
-    return classifyFetchError(e)
+    return { outcome: classifyFetchError(e) }
   }
-  if (!res.ok) return { kind: 'http-error', status: res.status }
+  if (!res.ok) return { outcome: { kind: 'http-error', status: res.status } }
   let json: unknown
   try {
     json = await res.json()
-  } catch {
-    return { kind: 'invalid' } // HTML error page, captive portal, truncated body …
+  } catch (e) {
+    // the shared timeout can fire during the body read — that's the network,
+    // not the server's data; only a non-abort failure means a bad body
+    // (HTML error page, captive portal, truncated JSON …)
+    return { outcome: e instanceof DOMException ? classifyFetchError(e) : { kind: 'invalid' } }
   }
   const file = parsePlatesFile(json)
-  if (!file) return { kind: 'invalid' }
+  if (!file) return { outcome: { kind: 'invalid' } }
+  return { outcome: { kind: 'updated', count: 0 }, file } // count filled in on commit
+}
+
+async function doRefresh(): Promise<RefreshOutcome> {
+  const url = getUrl()
+  if (!url) return { kind: 'no-url' }
+  const { outcome, file } = await fetchList(url)
+  // the configured URL changed while this fetch was in flight: neither the
+  // data nor the outcome belongs to the current config — start over
+  if (getUrl() !== url) return doRefresh()
+  if (!file) return outcome
 
   index = buildIndex(file)
   cachedAt = Date.now()
